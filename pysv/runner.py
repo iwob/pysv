@@ -22,7 +22,7 @@ def run_from_options(env):
 			if res.decision == 'unsat':
 				print('Counterexample not found! Program is correct.')
 			elif res.decision == 'sat':
-				print('Counterexample found! Program is not correct.')
+				print('Counterexample found! Program is incorrect.')
 		return res
 
 	elif env.example:
@@ -48,5 +48,5 @@ def run_from_options(env):
 		return res
 
 	else:
-		print("Task was not specified! Use either --verify or --synthesize.")
+		print("Task was not specified! Use either --verify, --example or --synthesize.")
 		exit()

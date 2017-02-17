@@ -337,9 +337,9 @@ def convert(ib, post, program_vars):
 	# Converting postcondition.
 	ssa_conv.update_expr(post.src.expr, dict_assign_nums)
 
-	utils.logger.info('\n\n------------------------------')
-	utils.logger.info('SSA form:')
-	utils.logger.info('------------------------------')
-	utils.logger.info(str(src_ib_ssa))
+	utils.logger.debug('------------------------------')
+	utils.logger.debug('SSA form:')
+	utils.logger.debug('------------------------------')
+	utils.logger.debug(str(src_ib_ssa))
 
 	return ProgramInterm(src_ib_ssa), post
