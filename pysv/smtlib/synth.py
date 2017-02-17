@@ -86,12 +86,12 @@ class SynthesisConstr(SMTLIBConstraints):
 		:param free_vars: (list[str]) Names of variables in the program which are free and which are part of the final solution together with decisions on how holes should be filled.
 		:return: (str) Final asserted SMT-LIB 2.0 code of the synthesis formula.
 		"""
-		synth   = self.synthesis_formula_forall_standard(PROGRAM, PRE, POST, program_vars)
+		synth   = self.synthesis_formula_forall_standard(PROGRAM, PRE, POST, program_vars, free_vars)
 		synth   = self.assertify(synth, 'SYNTH_FORMULA')
 		return synth
 
 
-	def synthesis_formula_forall_standard(self, PROGRAM, PRE, POST, program_vars):
+	def synthesis_formula_forall_standard(self, PROGRAM, PRE, POST, program_vars, free_vars):
 		"""Unasserted synthesis formula in the form of: forall(input_vars and local_vars) PRE and PROGRAM => POST..
 
 		:param PROGRAM: (ProgramSmt2) Instruction block of the program's body.
@@ -100,7 +100,7 @@ class SynthesisConstr(SMTLIBConstraints):
 		:param program_vars: (ProgramVars) Object containing identifiers and types of all program's variables.
 		:return: (str) Unasserted SMT-LIB 2.0 code of the synthesis formula.
 		"""
-		in_vars, loc_vars = self.synthesis_get_forall_vars(program_vars, PROGRAM.let_declarations)
+		in_vars, loc_vars = self.synthesis_get_forall_vars(program_vars, PROGRAM.let_declarations, free_vars=free_vars)
 		text_forall = self.text_forall(in_vars, loc_vars)
 		body_text = '\t(=>\n' + \
 		            '\t\t(and\n' + \
@@ -137,8 +137,9 @@ class SynthesisConstr(SMTLIBConstraints):
 		return body_text
 
 
-	def synthesis_get_forall_vars(self, program_vars, let_decls):
+	def synthesis_get_forall_vars(self, program_vars, let_decls, free_vars):
 		if self.env.assignments_as_lets:
+			# TODO: handle free_vars
 			all_vars = program_vars.all().copy()
 			let_vars = [v[0] for v in let_decls]
 			res = {}
@@ -147,7 +148,8 @@ class SynthesisConstr(SMTLIBConstraints):
 					res[k] = all_vars[k]
 			return res, {}
 		else:
-			return program_vars.input_vars, program_vars.local_vars
+			loc_vars = {k:v for k, v in program_vars.local_vars.items() if k not in free_vars}
+			return program_vars.input_vars, loc_vars
 
 
 
