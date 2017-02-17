@@ -33,34 +33,34 @@ if H1:
 else:
 	res = H3
 	"""
-	vars = contract.ProgramVars({'x': 'Int', 'y': 'Int'}, {'res': 'Int'})
 	code_pre = 'True'
 	code_post = 'res >= x and res >= y and (res == x or res == y)'
-
 
 	# Specification of the hole's template in the form of the grammar in SYGUS format.
 	sygus_grammar_hole1 = """
 	(
 		( Start Bool
-			( ( Constant Bool ) (> x y) (>= x y) (< x y) (<= x y) (not (= x y)) (= x y)
-				(> x ( Constant Int )) (>= x ( Constant Int )) (< x ( Constant Int )) (<= x ( Constant Int )) (not (=  x ( Constant Int ))) (= x ( Constant Int ))
-				(> y ( Constant Int )) (>= y ( Constant Int )) (< y ( Constant Int )) (<= y ( Constant Int )) (not (= y ( Constant Int ))) (= y ( Constant Int ))
+			( (Constant Bool) (> TermInt TermInt) (>= TermInt TermInt) (= TermInt TermInt) (<= TermInt TermInt) (< TermInt TermInt)
 			)
+		)
+		( TermInt Int
+			( (Constant Int) x y )
 		)
 	)
 	"""
 	sygus_grammar_hole23 = """
 	(
 		( Start Int
-			( ( Constant Int ) x y (+ x y) (- x y) (- y x) (+ x ( Constant Int )) (+ y ( Constant Int )) )
+			( (Constant Int) x y (+ x y) (- x y) (- y x) (+ x ( Constant Int )) (+ y ( Constant Int )) )
 		)
 	)
 	"""
 	grammar1 = templates.load_gramar_from_SYGUS_spec(sygus_grammar_hole1)
 	grammar23 = templates.load_gramar_from_SYGUS_spec(sygus_grammar_hole23)
-	h1 = smt_synthesis.HoleDecl('H1', grammar1, {'x': 'Int', 'y': 'Int'}, True, 2)
-	h2 = smt_synthesis.HoleDecl('H2', grammar23, None, True, 2)
-	h3 = smt_synthesis.HoleDecl('H3', grammar23, None, True, 2)
+	pv = contract.ProgramVars({'x': 'Int', 'y': 'Int'}, {'res': 'Int'})
+	h1 = smt_synthesis.HoleDecl('H1', grammar1, pv, True, 2)
+	h2 = smt_synthesis.HoleDecl('H2', grammar23, pv, True, 2)
+	h3 = smt_synthesis.HoleDecl('H3', grammar23, pv, True, 2)
 	hole_decls = [h1, h2, h3]
 
 
