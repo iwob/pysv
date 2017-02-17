@@ -78,5 +78,5 @@ else:
 	# The result is currently only a raw output from the solver, but one can verify from the model
 	# that synthesized program is correct.
 	env = utils.Options(['--solver', 'z3', '--logic', 'NIA'])
-	res = smt_synthesis.synthesize(code, code_pre, code_post, vars, env, hole_decls)
+	res = smt_synthesis.synthesize(code, code_pre, code_post, pv, env, hole_decls)
 ```
