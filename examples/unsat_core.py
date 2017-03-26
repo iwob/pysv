@@ -24,18 +24,18 @@ from pysv import templates
 
 
 def get_hole_declarations(program_vars):
-	"""Helper function for creating hole declaration with a grammar blow."""
-	grammar_spec = """
-	(
-		(Start Int (
-				(Variable Int)
-				(+ Start Start)
-		))
-	)
-	"""
-	grammar = templates.load_gramar_from_SYGUS_spec(grammar_spec)
-	h1 = smt_synthesis.HoleDecl('HOLE1', grammar, program_vars, True, max_depth=3)
-	return [h1]
+    """Helper function for creating hole declaration with a grammar blow."""
+    grammar_spec = """
+    (
+        (Start Int (
+                (Variable Int)
+                (+ Start Start)
+        ))
+    )
+    """
+    grammar = templates.load_gramar_from_SYGUS_spec(grammar_spec)
+    h1 = smt_synthesis.HoleDecl('HOLE1', grammar, program_vars, True, max_depth=3)
+    return [h1]
 
 
 

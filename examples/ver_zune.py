@@ -49,13 +49,13 @@ zune_simplified = """
 days2 = days
 year2 = year
 if year % 4 == 0:
-	if days > 366:
-		days2 = days - 366
-		year2 = year + 1
-	# lack of else statement
+    if days > 366:
+        days2 = days - 366
+        year2 = year + 1
+    # lack of else statement
 else:
-	days2 = days - 365
-	year2 = year + 1
+    days2 = days - 365
+    year2 = year + 1
 """
 input_vars = contract.ProgramVars({"days" : 'Int', "year" : 'Int'})
 pre = "days > 365 and year >= 1980"
@@ -76,9 +76,9 @@ post = contract.formula_test_cases_py([t1, t2])
 days = 9
 year = 1980
 if year % 4 == 0:
-	if days > 366:
-		days -= 366
-		year += 1
-	else:
-		days -= 365
-		year += 1
+    if days > 366:
+        days -= 366
+        year += 1
+    else:
+        days -= 365
+        year += 1

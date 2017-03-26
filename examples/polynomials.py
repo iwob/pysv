@@ -71,27 +71,27 @@ csv_keijzer12 = """x:Int; y:Int; res:Int
 
 
 def synthesize_keijzer12():
-	smtgp_nia_grammar = """
-	(
-		( Start Int
-			( x y (Constant Int) (+ Start Start) (- Start Start) (* Start Start) (div Start Start) (ite SBool Start Start) )
-		)
-		( SBool Bool
-			( (> Start Start) (>= Start Start) (< Start Start) (<= Start Start) (= Start Start) (= SBool SBool) )
-		)
-	)
-	"""
-	vars = contract.ProgramVars({'x': 'Int', 'y': 'Int'}, {'res': 'Int'})
-	code = """(= res H1)"""
-	code_pre = 'true'
-	code_post = 'true'
-	grammar = templates.load_gramar_from_SYGUS_spec(smtgp_nia_grammar)
-	h1 = smt_synthesis.HoleDecl('H1', grammar, {'x': 'Int', 'y': 'Int'}, True, 6)
-	hole_decls = [h1]
-	tc = contract.TestCases.from_csv(csv_keijzer12)
-	env = utils.Options(['--solver', 'z3', '--logic', 'NIA', "--lang", "smt2"])
-	res = smt_synthesis.synthesize_tc(tc, code, code_pre, code_post, vars, env, hole_decls)
-	return res
+    smtgp_nia_grammar = """
+    (
+        ( Start Int
+            ( x y (Constant Int) (+ Start Start) (- Start Start) (* Start Start) (div Start Start) (ite SBool Start Start) )
+        )
+        ( SBool Bool
+            ( (> Start Start) (>= Start Start) (< Start Start) (<= Start Start) (= Start Start) (= SBool SBool) )
+        )
+    )
+    """
+    vars = contract.ProgramVars({'x': 'Int', 'y': 'Int'}, {'res': 'Int'})
+    code = """(= res H1)"""
+    code_pre = 'true'
+    code_post = 'true'
+    grammar = templates.load_gramar_from_SYGUS_spec(smtgp_nia_grammar)
+    h1 = smt_synthesis.HoleDecl('H1', grammar, {'x': 'Int', 'y': 'Int'}, True, 6)
+    hole_decls = [h1]
+    tc = contract.TestCases.from_csv(csv_keijzer12)
+    env = utils.Options(['--solver', 'z3', '--logic', 'NIA', "--lang", "smt2"])
+    res = smt_synthesis.synthesize_tc(tc, code, code_pre, code_post, vars, env, hole_decls)
+    return res
 
 
 
@@ -104,10 +104,10 @@ def synthesize_keijzer12():
 
 
 if __name__ == "__main__":
-	res = synthesize_keijzer12()
+    res = synthesize_keijzer12()
 
-	print('******** Z3 RESULT ********')
-	print(res.text)
-	print('--------------------------\n')
-	print('SYNTHESIZED PYTHON CODE:')
-	print(res.final_code)
+    print('******** Z3 RESULT ********')
+    print(res.text)
+    print('--------------------------\n')
+    print('SYNTHESIZED PYTHON CODE:')
+    print(res.final_code)

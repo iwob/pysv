@@ -28,29 +28,29 @@ from pysv import smt_verifier
 
 def verify_code(code, precondition, postcondition, variables):
 
-	# Running verifier
-	env = utils.Options(['--logic', 'LIA',
-	                     '--silent', 0,
-	                     '--produce_assignments', 1,
-	                     '--post_in_cnf', 1,
-	                     '--solver_interactive_mode', 1,
-	                     '--produce_unsat_core', 1,
-	                     '--ver_annotate_post', 1,
-	                     '--ver_flat_formula', 1])
-	res = smt_verifier.verify(code, precondition, postcondition, variables, env)
+    # Running verifier
+    env = utils.Options(['--logic', 'LIA',
+                         '--silent', 0,
+                         '--produce_assignments', 1,
+                         '--post_in_cnf', 1,
+                         '--solver_interactive_mode', 1,
+                         '--produce_unsat_core', 1,
+                         '--ver_annotate_post', 1,
+                         '--ver_flat_formula', 1])
+    res = smt_verifier.verify(code, precondition, postcondition, variables, env)
 
-	# Printing result
-	print('\n')
-	print('----------------------------------------------')
-	print('                SOLVER RESULT                 ')
-	print('----------------------------------------------')
-	if res.decision == 'unsat':
-		print('Counterexample not found! Program is correct.')
-	elif res.decision == 'sat':
-		print(res.witness)
-		print('Counterexample found! Program is incorrect.')
-	print('----------------------------------------------\n\n')
-	return res
+    # Printing result
+    print('\n')
+    print('----------------------------------------------')
+    print('                SOLVER RESULT                 ')
+    print('----------------------------------------------')
+    if res.decision == 'unsat':
+        print('Counterexample not found! Program is correct.')
+    elif res.decision == 'sat':
+        print(res.witness)
+        print('Counterexample found! Program is incorrect.')
+    print('----------------------------------------------\n\n')
+    return res
 
 
 
@@ -94,10 +94,10 @@ code =\
 """
 trigger = False
 if acc < limit:
-	newAcc = acc + 1
+    newAcc = acc + 1
 else:
-	newAcc = 0
-	trigger = True
+    newAcc = 0
+    trigger = True
 """
 verify_code(code, precondition, postcondition, variables)
 
@@ -112,9 +112,9 @@ code =\
 trigger = True # unsat-core will not contain this instruction, because it has no effect on the result.
 trigger = False
 if acc < limit-1:
-	newAcc = acc + 1
+    newAcc = acc + 1
 else:
-	newAcc = 0
-	trigger = True
+    newAcc = 0
+    trigger = True
 """
 verify_code(code, precondition, postcondition, variables)

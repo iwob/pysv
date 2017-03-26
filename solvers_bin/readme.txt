@@ -4,12 +4,12 @@ In this directory you can put binaries (or symbolic links) of any SMT-solver and
 
 Download links for binary distributions of some SMT solvers:
 * Z3
-	https://github.com/Z3Prover/z3/releases
+    https://github.com/Z3Prover/z3/releases
     (building the newest version (repository's head on master) from source is recommended)
 * MathSAT
     http://mathsat.fbk.eu/download.html
 * YICES
-	http://yices.csl.sri.com/index.html
+    http://yices.csl.sri.com/index.html
 
 
 To easily use the solver simply move it's binary to this folder (solvers-bin), where by default solvers binaries are looked for. Default names of the solvers binaries are:
