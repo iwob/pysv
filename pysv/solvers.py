@@ -1,3 +1,5 @@
+from __future__ import print_function
+import sys
 from subprocess import Popen, PIPE, STDOUT
 from signal import signal, SIGPIPE, SIG_DFL
 from pysv import utils
@@ -38,10 +40,12 @@ class Solver(object):
                 out_data, err_data = self.run_solver_interactive(script, other_params)
             else:
                 out_data, err_data = self.run_solver_once(script, other_params)
-        except FileNotFoundError:
-            raise FileNotFoundError('Solver binaries not found! Check your solvers_bin folder or --solver_path argument.')
-        except Exception:
-            raise Exception('Solver could not be executed or critical error occurred!')
+        except OSError as e:
+            print("Solver binaries not found! Check your solvers_bin folder or --solver_path argument.", file=sys.stderr)
+            raise e
+        except Exception as e:
+            print("Solver could not be executed or critical error occurred!", file=sys.stderr)
+            raise e
         else: # no exception.
             text = self.prepare_apply_output(out_data, err_data)
             return SolverResult(text, self.env, script, text_errors=err_data)
@@ -121,7 +125,7 @@ class Solver(object):
         return res
 
     @staticmethod
-    def get_solver_specific_args(solver_type, env, other_args = None):
+    def get_solver_specific_args(solver_type, env, other_args=None):
         if other_args is None:
             other_args = []
         if solver_type == Solver.Z3:
@@ -150,7 +154,7 @@ class Solver(object):
 
 class SolverBinaries(Solver):
 
-    def __init__(self, env, solver_name= None, args = None):
+    def __init__(self, env, solver_name=None, args=None):
         if args is None:
             args = []
         if solver_name is None:
