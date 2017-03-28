@@ -1,4 +1,4 @@
-# pysv (Python Synthesis and Verification)
+# PySV (Python Synthesis and Verification)
 
 I created this framework to 1) gain the first-hand experience with formal approaches to verification and synthesis of computer programs, 2) have a testbed for various ideas regarding this topic. The focus of pysv is to provide such utilities for simple programs written in Python. Please keep in mind that this is work in progress and major changes are very likely to happen.
 
