@@ -1,0 +1,188 @@
+sat
+(model 
+  (define-fun z3name!15 () Int
+    0)
+  (define-fun HOLE1Start14_r14 () Int
+    0)
+  (define-fun z3name!16 () Int
+    0)
+  (define-fun HOLE1Variable_Int9_r9 () Int
+    0)
+  (define-fun z3name!47 () Int
+    0)
+  (define-fun z3name!24 () Int
+    0)
+  (define-fun z3name!25 () Int
+    0)
+  (define-fun z3name!60 () Int
+    1)
+  (define-fun z3name!14 () Int
+    0)
+  (define-fun HOLE1Start12_r12 () Int
+    0)
+  (define-fun z3name!52 () Int
+    3)
+  (define-fun z3name!40 () Int
+    3)
+  (define-fun z3name!23 () Int
+    1)
+  (define-fun z3name!28 () Int
+    0)
+  (define-fun z3name!56 () Int
+    3)
+  (define-fun z3name!7 () Int
+    0)
+  (define-fun z3name!41 () Int
+    3)
+  (define-fun HOLE1Start0_r0 () Int
+    2)
+  (define-fun z3name!13 () Int
+    0)
+  (define-fun z3name!38 () Int
+    1)
+  (define-fun z3name!48 () Int
+    3)
+  (define-fun z3name!34 () Int
+    0)
+  (define-fun z3name!31 () Int
+    0)
+  (define-fun z3name!45 () Int
+    0)
+  (define-fun z3name!27 () Int
+    1)
+  (define-fun z3name!29 () Int
+    0)
+  (define-fun z3name!4 () Int
+    0)
+  (define-fun z3name!26 () Int
+    1)
+  (define-fun z3name!35 () Int
+    0)
+  (define-fun z3name!11 () Int
+    0)
+  (define-fun z3name!21 () Int
+    1)
+  (define-fun z3name!8 () Int
+    0)
+  (define-fun HOLE1Start3_r3 () Int
+    0)
+  (define-fun HOLE1Start18_r18 () Int
+    0)
+  (define-fun HOLE1Start16_Int0 () Int
+    0)
+  (define-fun HOLE1Start4_r4 () Int
+    0)
+  (define-fun z3name!17 () Int
+    0)
+  (define-fun z3name!58 () Int
+    0)
+  (define-fun z3name!55 () Int
+    0)
+  (define-fun z3name!42 () Int
+    3)
+  (define-fun z3name!54 () Int
+    0)
+  (define-fun z3name!12 () Int
+    0)
+  (define-fun HOLE1Variable_Int20_r20 () Int
+    1)
+  (define-fun HOLE1Start12_Int0 () Int
+    0)
+  (define-fun HOLE1Start2_r2 () Int
+    1)
+  (define-fun HOLE1Start1_r1 () Int
+    2)
+  (define-fun z3name!20 () Int
+    0)
+  (define-fun z3name!36 () Int
+    1)
+  (define-fun z3name!22 () Int
+    1)
+  (define-fun z3name!46 () Int
+    0)
+  (define-fun z3name!53 () Int
+    3)
+  (define-fun z3name!61 () Int
+    1)
+  (define-fun z3name!63 () Int
+    1)
+  (define-fun z3name!37 () Int
+    1)
+  (define-fun z3name!6 () Int
+    0)
+  (define-fun HOLE1Start17_r17 () Int
+    0)
+  (define-fun z3name!19 () Int
+    0)
+  (define-fun z3name!62 () Int
+    1)
+  (define-fun HOLE1Start8_r8 () Int
+    0)
+  (define-fun z3name!49 () Int
+    3)
+  (define-fun z3name!18 () Int
+    0)
+  (define-fun HOLE1Variable_Int10_r10 () Int
+    2)
+  (define-fun HOLE1Variable_Int5_r5 () Int
+    2)
+  (define-fun HOLE1Variable_Int21_r21 () Int
+    0)
+  (define-fun HOLE1Start13_r13 () Int
+    0)
+  (define-fun z3name!43 () Int
+    3)
+  (define-fun HOLE1Start6_r6 () Int
+    1)
+  (define-fun z3name!39 () Int
+    1)
+  (define-fun z3name!10 () Int
+    0)
+  (define-fun HOLE1Start7_r7 () Int
+    0)
+  (define-fun z3name!30 () Int
+    0)
+  (define-fun z3name!33 () Int
+    1)
+  (define-fun z3name!32 () Int
+    0)
+  (define-fun z3name!44 () Int
+    3)
+  (define-fun HOLE1Start16_r16 () Int
+    0)
+  (define-fun HOLE1Variable_Int19_r19 () Int
+    0)
+  (define-fun z3name!57 () Int
+    0)
+  (define-fun z3name!51 () Int
+    3)
+  (define-fun HOLE1Start11_r11 () Int
+    1)
+  (define-fun z3name!5 () Int
+    0)
+  (define-fun z3name!50 () Int
+    3)
+  (define-fun z3name!59 () Int
+    0)
+  (define-fun HOLE1Variable_Int15_r15 () Int
+    2)
+  (define-fun z3name!9 () Int
+    0)
+  (define-fun HOLE1Start18_Int0 () Int
+    0)
+  (define-fun HOLE1Start17_Int0 () Int
+    0)
+  (define-fun HOLE1Start14_Int0 () Int
+    0)
+  (define-fun HOLE1Start13_Int0 () Int
+    0)
+  (define-fun HOLE1Start8_Int0 () Int
+    0)
+  (define-fun HOLE1Start7_Int0 () Int
+    0)
+  (define-fun HOLE1Start4_Int0 () Int
+    0)
+  (define-fun HOLE1Start3_Int0 () Int
+    0)
+)
+
