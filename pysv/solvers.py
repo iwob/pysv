@@ -13,7 +13,7 @@ TIMEOUT = 'timeout'
 
 class Solver(object):
     """This solver assumes that z3 command is visible in the path. This is true for standard installation of the z3 solver on Linux machines. SolverCommandZ3 runs z3 command in the shell with appropriate parameters and returns the raw output of this command.
-        """
+    """
 
     Z3 = 'z3'
     MathSAT = 'mathsat'

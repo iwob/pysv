@@ -56,7 +56,7 @@ class TestsSynthesis(unittest.TestCase):
         grammar = templates.load_gramar_from_SYGUS_spec("((Start Int (x y)))")
         h = smt_synthesis.HoleDecl('H0', grammar, None, True, 2)
         code = "(= res (* 2 (+ H0 y)))"
-        env = utils.Options({'--solver': 'z3', '--logic': 'NIA', '--silent': 1, '--lang':'smt2', '--output_data':'holes_content'})
+        env = utils.Options({'--solver': 'z3', '--logic': 'NIA', '--silent': 1, '--lang':'smt2', '--output_data':'holes_content', '--solver_timeout':'2000'})
         vars = ProgramVars({'x': 'Int', 'y': 'Int'}, {'res': 'Int'})
         res = smt_synthesis.synthesize(code, 'true', 'true', vars, env, [h])
         self.assertEquals('sat', res.decision)
@@ -89,7 +89,7 @@ else:
         hole_decls = [h2, h3]
         assertions = []#['(assert (= HOLE3_r0 3))']
         env = utils.Options({'--solver':'z3', '--solver_interactive_mode':0, '--logic':'NIA', '--silent':0,
-                             '--produce_proofs':1})
+                             '--produce_proofs':1, '--solver_timeout':'2000'})
         # For some reason produce_proofs make this instance run much faster.
         res = smt_synthesis.synthesize(code, code_pre, code_post, vars, env, hole_decls, assertions)
         print('[test_synthesis_recursive_grammar] RES:')
