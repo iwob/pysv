@@ -56,13 +56,21 @@ class TestsSynthesis(unittest.TestCase):
         grammar = templates.load_gramar_from_SYGUS_spec("((Start Int (x y)))")
         h = smt_synthesis.HoleDecl('H0', grammar, None, True, 2)
         code = "(= res (* 2 (+ H0 y)))"
-        env = utils.Options({'--solver': 'z3', '--logic': 'NIA', '--silent': 1, '--lang':'smt2', '--output_data':'holes_content', '--solver_timeout':'2000'})
+        env = utils.Options({'--solver': 'z3', '--logic': 'NIA', '--silent': 1, '--lang':'smt2', '--output_data':'holes_content',
+                             '--solver_timeout':'2000'})
         vars = ProgramVars({'x': 'Int', 'y': 'Int'}, {'res': 'Int'})
+        # Trivial case with the postcondition being always true.
         res = smt_synthesis.synthesize(code, 'true', 'true', vars, env, [h])
+        self.assertEquals('sat', res.decision)
+        # Slightly less trivial case.
+        res = smt_synthesis.synthesize(code, 'true', '(= res (+ (* 2 x) (* 2 y)))', vars, env, [h])
         self.assertEquals('sat', res.decision)
         self.assertEquals('0', res.model['H0Start0_r0'])
         self.assertEquals('x', res.holes_content['H0'])
         self.assertEquals("{'H0': 'x'}", res.str_formatted())
+        # Case for which UNSAT is the expected answer.
+        res = smt_synthesis.synthesize(code, 'true', '(= res 0)', vars, env, [h])
+        self.assertEquals('unsat', res.decision)
 
 
     def test_synthesis_recursive_grammar(self):
