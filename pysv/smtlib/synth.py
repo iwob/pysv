@@ -86,8 +86,8 @@ class SynthesisConstr(SMTLIBConstraints):
         :param free_vars: (list[str]) Names of variables in the program which are free and which are part of the final solution together with decisions on how holes should be filled.
         :return: (str) Final asserted SMT-LIB 2.0 code of the synthesis formula.
         """
-        synth   = self.synthesis_formula_forall_standard(PROGRAM, PRE, POST, program_vars, free_vars)
-        synth   = self.assertify(synth, 'SYNTH_FORMULA')
+        synth = self.synthesis_formula_forall_standard(PROGRAM, PRE, POST, program_vars, free_vars)
+        synth = self.assertify(synth, 'SYNTH_FORMULA')
         return synth
 
 
@@ -117,9 +117,10 @@ class SynthesisConstr(SMTLIBConstraints):
         return body_text
 
 
-    def synthesis_formula_forall_nonstandard(self, PROGRAM, PRE, POST, program_vars):
-        """Synthesis formula in the form of: forall(input_vars and local_vars) PRE => PROGRAM and POST."""
-        in_vars, loc_vars = self.synthesis_get_forall_vars(program_vars, PROGRAM.let_declarations)
+    def synthesis_formula_forall_nonstandard(self, PROGRAM, PRE, POST, program_vars, free_vars):
+        """Synthesis formula in the form of: forall(input_vars and local_vars) PRE => PROGRAM and POST.
+        This formula is incorrect and is here for presentation reasons."""
+        in_vars, loc_vars = self.synthesis_get_forall_vars(program_vars, PROGRAM.let_declarations, free_vars=free_vars)
         text_forall = self.text_forall(in_vars, loc_vars)
         body_text = text_forall + '\n' + \
                    '\t(=>\n' + \

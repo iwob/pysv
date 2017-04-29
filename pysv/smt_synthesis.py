@@ -304,7 +304,6 @@ class SynthesisResult(solvers.SolverResult):
         self.original_code = original_code
         self.holes_decls = holes_decls
         self.used_struct_vars = []
-        self.synth_substitute_free = env.synth_substitute_free
         self.holes_content = self.get_holes_content()
         self.final_code = self.get_final_code()
 
@@ -319,7 +318,8 @@ class SynthesisResult(solvers.SolverResult):
             return res
 
     def get_final_code(self):
-        """Produces code of the synthesized program."""
+        """Produces code of the synthesized program. Assumes that every name in the program is unique, so that standard
+        string replace method may be used."""
         if self.decision != 'sat':
             return self.original_code
 
@@ -327,9 +327,10 @@ class SynthesisResult(solvers.SolverResult):
         for hole in self.holes_decls:
             final_code = final_code.replace(hole.id, self.get_source_code_for_hole(hole))
 
-        if self.synth_substitute_free:
+        if self.env.synth_substitute_free:  # By default true
             # TODO: Substitute only explicitly given free variables and not all vars from the model.
-            # It works only because non-free vars are iterated on in forall and in test cases scenario all non_free vars are renamed.
+            # It works only because non-free vars are iterated on in forall, and in the case of synthesis from test cases
+            # all non-free variables are renamed (so there will be no collision with the names in the original code).
             for name in self.model:
                 final_code = final_code.replace(name, self.model[name])
         return final_code
