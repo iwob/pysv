@@ -213,7 +213,7 @@ class Options(object):
         parser.add_argument("--show_comments", type=int, choices=[0, 1], default=False)
         parser.add_argument("--silent", type=int, choices=[0, 1], default=False,
                             help="Silent mode.")
-        parser.add_argument("--solver", choices=["z3", "mathsat", "other"], type=str, default="z3",
+        parser.add_argument("--solver", choices=["z3", "cvc4", "mathsat", "other"], type=str, default="z3",
                             help="Specifies SMT solver to be used. By default, binaries of the selected solver are looked for in the solvers_bin directory, but you can also pass a path to them with --solver_path argument. Apart from that, this parameter sets some solver-specific parameters which will be passed to the selected SMT solver. (default: z3)")
         parser.add_argument("--solver_interactive_mode", type=int, choices=[0, 1], default=True,
                             help="In the interactive mode, application sends a set of constraints as an input to the solver, waits for the sat/unsat decision, and then asks for decision-specific data (e.g. model, unsat-core). In 'normal' mode, a script is sent once and solver's output is read only once, which means that solver is queried for all decision-specific data regardless of it's actual response. (default: 1)" )

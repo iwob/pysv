@@ -1,6 +1,7 @@
-mathsat
+mathsat*
 yices-smt2
 z3*
+cvc4*
 
 *.smt2
 *.smt2.txt

@@ -12,14 +12,13 @@ TIMEOUT = 'timeout'
 
 
 class Solver(object):
-    """This solver assumes that z3 command is visible in the path. This is true for standard installation of the z3 solver on Linux machines. SolverCommandZ3 runs z3 command in the shell with appropriate parameters and returns the raw output of this command.
-    """
+    """Handles interaction with the solver. Supports both interactive mode and single script run."""
 
     Z3 = 'z3'
+    CVC4 = 'cvc4'
     MathSAT = 'mathsat'
-    YICES = 'yices'
     OTHER = 'other'
-    supported_solvers = [Z3, MathSAT, YICES, OTHER]
+    supported_solvers = [Z3, CVC4, MathSAT, OTHER]
 
     def __init__(self, env):
         self.env = env
@@ -30,7 +29,7 @@ class Solver(object):
         """Runs a solver and passes the script on the standard input.
 
         :param script: A script in SMT-LIB 2.0 language.
-        :param other_params: Optional parameters for the z3 command.
+        :param other_params: Optional parameters for the solver.
         :return: SolverResult containing merged output from stdout and stderr.
         """
         if other_params is None:
@@ -39,7 +38,7 @@ class Solver(object):
             if self.solver_interactive_mode:
                 out_data, err_data = self.run_solver_interactive(script, other_params)
             else:
-                out_data, err_data = self.run_solver_once(script, other_params)
+                out_data, err_data = self.run_solver_script(script, other_params)
         except OSError as e:
             print("Solver binaries not found! Check your solvers_bin folder or --solver_path argument.", file=sys.stderr)
             raise e
@@ -110,7 +109,7 @@ class Solver(object):
             return decision + out, auxiliary_output + err
 
 
-    def run_solver_once(self, script, other_params):
+    def run_solver_script(self, script, other_params):
         cmd_strings = self.get_cmd_strings(other_params)
         p = Popen(cmd_strings, stdout=PIPE, stdin=PIPE, stderr=PIPE, universal_newlines=True, bufsize=-1)
         return p.communicate(input=script)  # a tuple (stdout, stderr) is returned
@@ -130,10 +129,10 @@ class Solver(object):
             other_args = []
         if solver_type == Solver.Z3:
             res = ['-smt2', '-in']
+        elif solver_type == Solver.CVC4:
+            res = ['--lang', 'smt']
         elif solver_type == Solver.MathSAT:
             res = ['-input=smt2', '-model_generation=TRUE'] #'-model'
-        elif solver_type == Solver.YICES:
-            res = []
         else:
             res = []
         res.extend(other_args)
@@ -143,10 +142,10 @@ class Solver(object):
     def get_solver_specific_bin_name(solver_type):
         if solver_type == Solver.Z3:
             return 'z3'
+        elif solver_type == Solver.CVC4:
+            return 'cvc4'
         elif solver_type == Solver.MathSAT:
             return 'mathsat'
-        elif solver_type == Solver.YICES:
-            return 'yices-smt2'
         else:
             return None
 
@@ -182,12 +181,10 @@ class SolverBinaries(Solver):
 
 def run_solver(script, env):
     """Runs the SMT-LIB 2.0 script using specified solver."""
-    # if env.solver == Solver.Z3:
-    #     return SolverCommandZ3(interactive_mode=env.solver_interactive_mode).apply(script)
     if env.solver in Solver.supported_solvers:
         return SolverBinaries(env).apply(script)
     else:
-        raise Exception('Chosen solver is not supported!')
+        raise Exception('The chosen solver is not supported! Supported: {0}.'.format(Solver.supported_solvers))
 
 
 
