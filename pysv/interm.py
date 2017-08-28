@@ -347,6 +347,10 @@ class InstrHole(Instruction):
 class Expression(object):
     # args: [Expression]
     def __init__(self, args=None):
+        """
+        :param args: (list[Expression]) a list of expressions being arguments
+        of this expression.
+        """
         if args is None:
             args = []
         self.arity = len(args)
@@ -380,9 +384,9 @@ class Op(Expression):
 
     # id: String, args: List[Expression]
     def __init__(self, opid, args):
+        Expression.__init__(self, args)
         self.id = opid
         self.isLogicOp = True if opid in PythonOperators.logic_ops else False
-        Expression.__init__(self, args)
 
     def __str__(self):
         res = self.id + '('
@@ -424,10 +428,10 @@ class Var(Expression):
     don't use the default apostrophe."""
 
     def __init__(self, id, sort='Int'):
+        Expression.__init__(self)
         self.id = id
         self.base_id = Var.base_id(id)
         self.sort = sort
-        Expression.__init__(self)
         self.is_variable = True
 
     def set_id(self, new_id):
@@ -469,8 +473,8 @@ class Var(Expression):
 
 class ConstInt(Expression):
     def __init__(self, value):
-        self.value = value
         Expression.__init__(self)
+        self.value = value
 
     def __str__(self):
         return self.get_text()
@@ -487,8 +491,8 @@ class ConstInt(Expression):
 
 class ConstBool(Expression):
     def __init__(self, value):
-        self.value = value
         Expression.__init__(self)
+        self.value = value
 
     def __str__(self):
         return self.get_text()
@@ -511,9 +515,9 @@ class ExprHole(Expression):
         """
         :param hole_decl: HoleDecl object containing basic information about this hole.
         """
+        Expression.__init__(self)
         self.hole_decl = hole_decl
         self.is_hole = True
-        Expression.__init__(self)
 
     def __str__(self):
         return self.get_text()
