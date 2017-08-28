@@ -557,15 +557,14 @@ def load_gramar_from_SYGUS_spec(spec):
         elif w == ')':
             brackets_open -= 1
             i += 1
-            if brackets_open == 1:
-                # print('Adding grammar rule: ' + str(grammar_rule))
-                grammar.add_rule(grammar_rule)
             continue
 
         if brackets_open == 2:
             # On the level of 2 opened brackets there are always production names (symb) and their sorts.
             rule_symb = words[i]
             sort = words[i + 1]
+            if sort in {"(", ")"}:
+                raise Exception("Malformed grammar!")
             grammar_rule = GrammarRule(rule_symb, sort, grammar)
             i += 2
             continue
@@ -587,8 +586,17 @@ def load_gramar_from_SYGUS_spec(spec):
                     grammar_rule.add(Production(rule_symb, body, grammar_rule))
 
                 j += 1
+            i += 1
+            if i < len(words) and words[i] == ")":
+                grammar.add_rule(grammar_rule)
+                continue
+            else:
+                raise Exception("Malformed grammar!")
+
         i += 1
 
-    # print('Final grammar:\n' + str(grammar))
+    if brackets_open != 0:
+        raise Exception("Malformed grammar!")
 
+    # print('Final grammar:\n' + str(grammar))
     return grammar
