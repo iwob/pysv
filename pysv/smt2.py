@@ -50,6 +50,18 @@ class NodeSmt2(object):
     def __str__(self):
         return self.str_format(sep=', ', smt2_mode=False)
 
+    def height(self):
+        if len(self.args) == 0:
+            return 0
+        else:
+            return 1 + max([a.height() for a in self.args])
+
+    def size(self):
+        if len(self.args) == 0:
+            return 1
+        else:
+            return 1 + sum([a.size() for a in self.args])
+
     def str_smt2(self):
         return self.str_format(sep=' ', smt2_mode=True)
 

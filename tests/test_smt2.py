@@ -22,6 +22,8 @@ class TestsCodeSMTLIB(unittest.TestCase):
         self.assertEquals('true', tree.name)
         self.assertEquals(True, tree.is_terminal)
         self.assertEquals(0, len(tree.args))
+        self.assertEquals(0, tree.height())
+        self.assertEquals(1, tree.size())
 
 
     def test_TreeSmt2_from_wlist_simple(self):
@@ -30,6 +32,8 @@ class TestsCodeSMTLIB(unittest.TestCase):
         self.assertEquals('and', tree.name)
         self.assertEquals(False, tree.is_terminal)
         self.assertEquals(3, len(tree.args))
+        self.assertEquals(2, tree.height())
+        self.assertEquals(8, tree.size())
 
         self.assertEquals('=', tree.args[0].name)
         self.assertEquals(False, tree.args[0].is_terminal)
