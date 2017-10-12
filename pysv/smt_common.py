@@ -23,8 +23,16 @@ def get_code_in_smt2(code, code_pre, code_post, program_vars, env, holes_decls =
     else:
         raise Exception(str(env.lang) + ": unsupported language!")
 
+
 def processHoles(code, holes_decls):
-    """Finds all hole symbols in the SMT-LIB code of the program and replaces them with appropriate references to their synthesis functions."""
+    """Finds all hole symbols in the SMT-LIB code of the program and replaces them with
+    appropriate references to their synthesis functions. Does nothing in case of
+    verification.
+
+    :param code: (str) Source code (in arbitrary language) of the program.
+    :param holes_decls: (list[HoleDecl]) Declarations of all holes.
+    :return: (str) Source code with SMT replacement of holes by appropriate functions.
+    """
     if holes_decls is None or len(holes_decls) == 0:
         return code
     else:
@@ -33,6 +41,7 @@ def processHoles(code, holes_decls):
             if h.id in code:
                 code = code.replace(h.id+" ", h.get_function_call()+" ")
         return code
+
 
 def convert_py_to_smt2(code, code_pre, code_post, program_vars, env, holes_decls):
     # Python source code --> internal abstract program representation.
@@ -49,6 +58,7 @@ def convert_py_to_smt2(code, code_pre, code_post, program_vars, env, holes_decls
     pre_smt2 = pre.to_smt2(env)
     post_smt2 = post.to_smt2(env)
     return ib_smt2, pre_smt2, post_smt2
+
 
 def write_script_to_file(script, env):
     if env.save_script_to_file:
