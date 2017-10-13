@@ -14,7 +14,8 @@ def compute_cnf(node):
 
 
 def expand_implications(node):
-    """Every implication in the expression will be transformed to its disjuntive expansion: A => B <=> -A or B
+    """Every implication in the expression will be transformed to its disjuntive expansion:
+    A => B <=> -A or B
 
     :param node: (NodeSmt2) Tree in the canonical form of expression in SMT-LIB 2.0 language.
     :return: (NodeSmt2) SMT2 tree with no implication symbol.
@@ -29,7 +30,8 @@ def expand_implications(node):
 
 
 def propagate_negations(node):
-    """Removes, with the usage of De Morgan laws, all negations by propagating them to the level of literals. Implications are expanded whenever necessary.
+    """Removes, with the usage of De Morgan laws, all negations by propagating them to
+    the level of literals. Implications are expanded whenever necessary.
 
     :param node: (NodeSmt2) Tree in the canonical form of expression in SMT-LIB 2.0 language.
     :return: (NodeSmt2) SMT2 tree with no negations other than those in literals.
@@ -56,9 +58,14 @@ def propagate_negations(node):
 
 
 def move_conjunctions_to_top(node):
-    """Moves conjunctions up in the tree, so no conjunction is below a disjunction. This also means that produced tree is in the CNF form. Example: or(D and(a, not(b)) ===> and(or(D, a), or(D, not(b))).
+    """Moves conjunctions up in the tree, so no conjunction is below a disjunction.
+    This also means that produced tree is in the CNF form.
 
-    :param node: (NodeSmt2) Tree in the canonical form of expression in SMT-LIB 2.0 language. Assumptions: implications were expanded and all negations were propagated.
+    Example:
+    or(D and(a, not(b))  ===>  and(or(D, a), or(D, not(b))).
+
+    :param node: (NodeSmt2) Tree in the canonical form of expression in SMT-LIB 2.0 language.
+     Assumptions: implications were expanded and all negations were propagated.
     :return: (NodeSmt2) SMT2 tree containing conjunctions at the top.
     """
     assert isinstance(node, NodeSmt2)
@@ -87,8 +94,10 @@ def move_conjunctions_to_top(node):
 def get_clauses_from_cnf_formula(node):
     """Returns a list containing trees of every clause in the CNF form.
 
-    :param node: (NodeSmt2) Tree in the canonical form of expression in SMT-LIB 2.0 language in the CNF form.
-    :return: (list[NodeSmt2]) List of clauses, where each clause is represented by an or-node from the tree.
+    :param node: (NodeSmt2) Tree in the canonical form of expression in SMT-LIB 2.0 language
+     in the CNF form.
+    :return: (list[NodeSmt2]) List of clauses, where each clause is represented by an or-node
+     from the tree.
     """
     assert isinstance(node, NodeSmt2)
     if node.name == 'or':
@@ -101,7 +110,11 @@ def get_clauses_from_cnf_formula(node):
 
 
 def canonical_form(node):
-    """Transforms tree to the canonical form. SMT-LIB allows for expressions in the from: '(and X Y Z)'. This makes processing harder, so as canonical form assumed was: '(and X (and Y Z))'. Order of arguments does not matter, so '(and (and X Y) Z)' is also in canonical form. All implications, alternatives and conjunctions must have exactly two arguments.
+    """Transforms tree to the canonical form. SMT-LIB allows expressions in the from:
+    '(and X Y Z)'. This makes processing harder, so as canonical form assumed was:
+    '(and X (and Y Z))'. Order of arguments does not matter, so '(and (and X Y) Z)' is
+    also in the canonical form. All implications, alternatives and conjunctions must have
+    exactly two arguments.
 
     :param node: (NodeSmt2) Tree of expression in SMT-LIB 2.0 language.
     :return: (NodeSmt2) Tree in the canonical form.

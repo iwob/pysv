@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 def index_of_closing_parenthesis(words, start, left_enc ='(', right_enc =')'):
-    """Returns index of the opening parenthesis of this parenthesis.."""
+    """Returns index of the closing parenthesis of the parenthesis indicated by start."""
     num_opened = 1
     for i in range(start + 1, len(words)):
         if words[i] == left_enc:
@@ -21,7 +21,7 @@ def index_of_closing_parenthesis(words, start, left_enc ='(', right_enc =')'):
 
 
 def index_of_opening_parenthesis(words, start, left_enc ='(', right_enc =')'):
-    """Returns index of the closing parenthesis of this parenthesis."""
+    """Returns index of the opening parenthesis of the parenthesis indicated by start."""
     num_opened = -1
     i = start-1
     while i >= 0:

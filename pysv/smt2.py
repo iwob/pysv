@@ -4,7 +4,8 @@ from pysv import utils
 class ProgramSmt2(object):
 
     def __init__(self, src, constr_list = None, let_declarations = None):
-        assert (src.strip()[0] == '(' and src.strip()[-1] == ')') or len(src.split()) == 1, "Source code is not a valid SMT-LIB string! src: " + src
+        assert (src.strip()[0] == '(' and src.strip()[-1] == ')') or len(src.split()) == 1,\
+            "Source code is not a valid SMT-LIB string! src: " + src
         if let_declarations is None:
             let_declarations = []
         if constr_list is None:
@@ -25,7 +26,8 @@ class ProgramSmt2(object):
 
 
 def constr_list_from_smt2_code(code):
-    """Returns list of commands from SMT-LIB 2.0 source where each unasserted constraint is at its own line."""
+    """Returns list of commands from SMT-LIB 2.0 source where each unasserted constraint
+    is at its own line."""
     return code.split('\n')
 
 
@@ -82,6 +84,10 @@ class NodeSmt2(object):
     def change_args(self, new_args):
         return NodeSmt2(self.name, new_args, self.info.copy())
 
+
+    @staticmethod
+    def from_str(code):
+        return NodeSmt2.from_wlist(utils.str_to_wlist(code))
 
     @staticmethod
     def from_wlist(words):
