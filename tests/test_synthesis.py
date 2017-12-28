@@ -168,6 +168,7 @@ else:
         res = smt_synthesis.synthesize_tc(tests, prog, pre, post, program_vars, env,
                                           free_vars=free_vars)
         self.assertEquals('sat', res.decision)
+        self.assertEquals('3', res.model['fitness'])
 
 
     def test_synthesis_min_passed_tests(self):
