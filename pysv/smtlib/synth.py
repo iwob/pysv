@@ -420,6 +420,8 @@ class HolesConstrGenerator(object):
         """Fills all stacks with constraints in SMTLIB format."""
         for hole in self.all_holes:
             gt = hole.grammar_tree
+            if gt.root is None:
+                raise Exception("No content can be generated for the hole {0} for the specified depth.".format(hole.id))
             # Traversing grammar tree and adding all variables and functions.
             self.push_all_var_declarations(gt.root)
             if self.allow_commutative_constr:

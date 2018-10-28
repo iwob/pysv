@@ -8,8 +8,8 @@ sys.path.insert(1, os.path.abspath('..'))
 #                                  SYNTHESIS OF A MAXIMUM FUNCTION
 #---------------------------------------------------------------------------------------------------
 # This is an example of the synthesis of missing expressions in the Python program. Synthesis is
-# done with a use of SMT solver. Several holes are synthesized at once to demonstrate that for
-# synthesis methods based on SMT solvers it does not make much difference than synthesizing one hole.
+# done with a use of SMT solver. Several holes are synthesized simultaneously in order to meet a
+# specification.
 #
 # Program should realize a maximum operation on two inputs: x and y.
 #
@@ -48,6 +48,7 @@ else:
         )
     )
     """
+    # This encoding is easy for the solver.
     sygus_grammar_hole23 = """
     (
         ( Start Int
@@ -55,12 +56,26 @@ else:
         )
     )
     """
+    # This encoding is hard for the solver. Is it because of sharing terms across different ites branches?
+    sygus_grammar_hole23_ = """
+    (
+        ( Start Int
+            (  (- TermInt TermInt) (+ TermInt TermInt) (* (Constant Int) VarInt) )
+        )
+        ( VarInt Int
+            ( x y )
+        )
+        ( TermInt Int
+            ( (Constant Int) x y )
+        )
+    )
+    """
     grammar1 = templates.load_gramar_from_SYGUS_spec(sygus_grammar_hole1)
     grammar23 = templates.load_gramar_from_SYGUS_spec(sygus_grammar_hole23)
     pv = contract.ProgramVars({'x': 'Int', 'y': 'Int'}, {'res': 'Int'})
-    h1 = smt_synthesis.HoleDecl('H1', grammar1, pv, True, 2)
-    h2 = smt_synthesis.HoleDecl('H2', grammar23, pv, True, 2)
-    h3 = smt_synthesis.HoleDecl('H3', grammar23, pv, True, 2)
+    h1 = smt_synthesis.HoleDecl('H1', grammar1, pv, True, max_depth=2)
+    h2 = smt_synthesis.HoleDecl('H2', grammar23, pv, True, max_depth=2)
+    h3 = smt_synthesis.HoleDecl('H3', grammar23, pv, True, max_depth=2)
     hole_decls = [h1, h2, h3]
 
 

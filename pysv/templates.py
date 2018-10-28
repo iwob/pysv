@@ -301,7 +301,8 @@ class GrammarOp(GrammarNode):
 
 
 class HoleGrammarTree(object):
-    """Grammar tree of a grammar of a certain hole. On the basis of this tree generated are constraints for the SMT solver."""
+    """Grammar tree of a grammar of a certain hole enumerating over its all possible derivations.
+     This tree will be directly used to encode holes' function definitions for the SMT solver. """
 
     SUPPORTED_TYPES = ["Int", "Bool", "Real", "String"]
 
