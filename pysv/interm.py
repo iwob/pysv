@@ -544,16 +544,6 @@ def rename_base_vars(node, old_bid, new_bid):
 # -------------------------------------------------------------------------------------
 
 
-# def interm_to_smt2(program, env):
-#     """Converts any valid instruction in the intermediary representation into equivalent SMT-LIB 2.0 code."""
-#     assert(isinstance(program, ProgramInterm))
-#     if type(program.src) == InstrBlock:
-#         return interm_to_smt2_ib(program, env)
-#     elif type(program.src) == InstrExpr:
-#         return interm_to_smt2_expr(program)
-#     else:
-#         raise Exception(str(type(program.src)) + ': instruction cannot be converted to smt2! Try enveloping it in the InstructionBlock.')
-
 
 def interm_to_smt2_ib(ib, env):
     assert(isinstance(ib, InstrBlock))
@@ -677,10 +667,12 @@ class ExprTranslator(object):
 
 class InstructionBlockTranslator(object):
 
-    def __init__(self, show_comments = True, assignments_as_lets = True):
+    def __init__(self, show_comments = True, assignments_as_lets = True, loop_unrolling = True, loop_unrolling_level = 2):
         self.show_comments = show_comments
         self.expr_translator = ExprTranslator
         self.assignments_as_lets = assignments_as_lets
+        self.loop_unrolling = loop_unrolling
+        self.loop_unrolling_level = loop_unrolling_level
         self.let_declarations = []
 
     def reset(self):
@@ -725,7 +717,7 @@ class InstructionBlockTranslator(object):
     def produce_constraints_instr(self, instr):
         """Generates constraints for the given instruction.
 
-        :return (List): A List containing constraints for SMT solver.
+        :return (list): A List containing constraints for SMT solver.
         """
         t = type(instr)
         if t is InstrAssign:
@@ -736,7 +728,7 @@ class InstructionBlockTranslator(object):
         elif t is InstrIf:
             return self.produce_constraints_if(instr)
         elif t is InstrWhile:
-            raise Exception('Loops are currently not supported!')
+            return self.produce_constraints_while(instr)
         elif t is InstrHole:
             raise Exception('Instruction holes are currently not supported!')
         elif isinstance(instr, Expression):
@@ -766,3 +758,8 @@ class InstructionBlockTranslator(object):
         F2 = impl2
         #F3 = '(or ' + cond + ' (not ' + cond + '))'  # at least one branch must be true in IF THEN ELSE
         return [F1, F2]
+
+    def produce_constraints_while(self, instr):
+        cond = self.expr_translator.apply(instr.condition)
+        body,cm = self.produce_constr_lists_internal(instr.body)
+        return ["(true)"]
