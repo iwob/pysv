@@ -64,7 +64,7 @@ class ASTToInstrBlockConverter(ast.NodeVisitor):
             if expr.is_hole:
                 return [InstrHole(expr.hole_decl)]
             else:
-                return [InstrExpr(expr)]
+                return [expr]
         else:
             print('NODE: '+str(node)+' (not analysed)')
             return []
@@ -97,11 +97,13 @@ def py_to_interm_ib(code, holes_decls = None):
     return ProgramInterm(instr_block)
 
 def py_to_interm_expr(code):
-    """Returns an instruction containing a simple expression. The code is first converted to AST and then to internal representation."""
+    """Returns an instruction containing a simple expression. The code is first converted
+     to AST and then to internal representation."""
     ast_tree = get_ast(code)
     # print_ast(ast_tree)
-    instr = convert_AST_to_expr(ast_tree)
-    return ProgramInterm(instr)
+    expr = convert_AST_to_expr(ast_tree)
+    assert isinstance(expr, Expression)
+    return expr
 
 def print_ast(tree):
     print('AST: ' + str(ast.dump(tree)))

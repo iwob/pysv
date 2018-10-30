@@ -3,7 +3,7 @@ from pysv.smtlib.common import *
 from pysv import contract
 from pysv import templates
 from pysv import ast_utils
-from pysv.interm import Var
+from pysv.interm import Var, Instruction
 from pysv.smt2 import ProgramSmt2
 
 
@@ -224,7 +224,7 @@ class SynthesisConstrTestCases(SynthesisConstr):
             if exclude is None or v not in exclude:
                 new_name = program_vars.get_latest_var_name(v)
                 if new_name != v:
-                    tc_post_pure.src.rename_var(v, new_name)
+                    tc_post_pure.rename_var(v, new_name)
         tc_post = self.tc_rename_vars_instructions(tc_post_pure, all_vars, testNum, exclude)
         tc_post = tc_post.to_smt2(self.env).src
         return tc_post
@@ -316,9 +316,10 @@ class SynthesisConstrTestCases(SynthesisConstr):
         return res_prog_vars
 
     def tc_rename_vars_instructions(self, obj, vars, num, exclude):
+        assert isinstance(obj, Instruction)
         for v in vars:
             if exclude is None or v not in exclude:
-                obj.src.rename_var(v, self.new_name(v, num))
+                obj.rename_var(v, self.new_name(v, num))
         return obj
 
     def tc_rename_vars_in_words(self, words, vars, num, exclude):

@@ -25,7 +25,7 @@ class TestsSSA(unittest.TestCase):
         self.assertEquals("|y'|", ib2.src.instructions[1].var.id)
         self.assertEquals("z", ib2.src.instructions[2].var.id)
         self.assertEquals(3, ib2.src.size())
-        self.assertEquals("z", post2.src.expr.args[0].id)
+        self.assertEquals("z", post2.args[0].id)
 
         ib2, post2 = ssa_converter.convert(ib2, post2, vars)
         self.assertFalse(ib.src.equals(ib2))
@@ -34,7 +34,7 @@ class TestsSSA(unittest.TestCase):
         self.assertEquals("|y'|", ib2.src.instructions[1].var.id)
         self.assertEquals("z", ib2.src.instructions[2].var.id)
         self.assertEquals(3, ib2.src.size())
-        self.assertEquals("z", post2.src.expr.args[0].id)
+        self.assertEquals("z", post2.args[0].id)
 
 
     def test_simple_program_no_ifs(self):
@@ -54,8 +54,8 @@ class TestsSSA(unittest.TestCase):
         self.assertEquals("|x''|", ib2.src.instructions[3].var.id)
         self.assertEquals("|y''|", ib2.src.instructions[4].var.id)
         self.assertEquals(5, ib2.src.size())
-        self.assertEquals("|x''|", post2.src.expr.args[0].args[0].id)
-        self.assertEquals("|z'|", post2.src.expr.args[1].args[0].id)
+        self.assertEquals("|x''|", post2.args[0].args[0].id)
+        self.assertEquals("|z'|", post2.args[1].args[0].id)
 
 
     def test_simple_program_one_if(self):
@@ -125,8 +125,8 @@ x = x + 5
         self.assertEquals("|x''''''|", ib2.src.instructions[3].var.id)
         self.assertEquals("|x'''''|", ib2.src.instructions[3].expr.args[0].id)
         # Postcondition
-        self.assertEquals("|x''''''|", post2.src.expr.args[0].args[0].id)
-        self.assertEquals("|y''|", post2.src.expr.args[1].args[0].id)
+        self.assertEquals("|x''''''|", post2.args[0].args[0].id)
+        self.assertEquals("|y''|", post2.args[1].args[0].id)
 
 
     def test_ssa_form_holes(self):

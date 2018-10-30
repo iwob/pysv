@@ -327,15 +327,15 @@ def convert(ib, post, program_vars):
     :param program_vars: ProgramVars object containing information about variables and their types.
     :return: A tuple containing the SSA form of the given program (block of instructions) and postcondition.
     """
-    assert(type(program_vars) == contract.ProgramVars)
-    assert (type(ib) == ProgramInterm)
-    assert (type(post) == ProgramInterm)
+    assert isinstance(program_vars, contract.ProgramVars)
+    assert isinstance(ib, ProgramInterm)
+    assert isinstance(post, Expression)
 
     ssa_conv = ConverterSSA()
     # Converting program's body.
     src_ib_ssa, dict_assign_nums = ssa_conv.convert(ib.src, program_vars)
     # Converting postcondition.
-    ssa_conv.update_expr(post.src.expr, dict_assign_nums)
+    ssa_conv.update_expr(post, dict_assign_nums)
 
     utils.logger.debug('------------------------------')
     utils.logger.debug('SSA form:')

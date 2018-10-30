@@ -36,9 +36,9 @@ class SMTLIBConstraints(object):
     def reset_state(self):
         self.num_asserts = 0
 
-    def get_program_constraints(self, ib):
+    def get_program_constraints(self, program):
         """Returns a list of constraints representing program instructions."""
-        return self.ib_translator.produce_constr_lists(ib)[0]
+        return self.ib_translator.produce_constr_lists(program.src)[0]
 
     def text_introduction(self):
         text  = '(set-option :print-success false)\n'

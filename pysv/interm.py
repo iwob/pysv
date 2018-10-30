@@ -4,15 +4,19 @@ from pysv.smt2 import ProgramSmt2
 
 
 class ProgramInterm(object):
-    """Program in the intermediary representation abstracting concrete programming language details."""
+    """Program in the intermediary representation abstracting concrete
+    programming language details. Program consists of a block of instructions."""
     def __init__(self, src):
+        assert(isinstance(src, InstrBlock))
         self.src = src
 
     def to_smt2(self, env):
-        return interm_to_smt2(self, env)
+        return self.src.to_smt2(env=env)
 
     def __str__(self):
         return str(self.src)
+
+
 
 
 
@@ -23,6 +27,7 @@ class ProgramInterm(object):
 
 class InstrBlock(object):
     def __init__(self, instrs):
+        assert isinstance(instrs, list)
         self.instructions = instrs
 
     def append(self, instr):
@@ -86,6 +91,9 @@ class InstrBlock(object):
             res.extend(i.get_holes_definitions())
         return res
 
+    def to_smt2(self, env):
+        return interm_to_smt2_ib(self, env=env)
+
     def __iter__(self):
         for i in self.instructions:
             yield i
@@ -142,7 +150,6 @@ class InstrAssign(Instruction):
         self.in_type = Instruction.ASSIGN
         self.var = var
         self.expr = expr
-        self.instruction_blocks = []
 
     def __str__(self):
         res = self.var.id + ' = ' + str(self.expr)
@@ -277,38 +284,6 @@ class InstrIf(Instruction):
         return res
 
 
-class InstrExpr(Instruction):
-    # expr: Expression
-    def __init__(self, expr):
-        Instruction.__init__(self)
-        self.in_type = Instruction.EXPR
-        self.expr = expr
-        self.instruction_blocks = []
-
-    def __str__(self):
-        return str(self.expr)
-
-    def rename_var(self, old_id, new_id):
-        self.expr.rename_var(old_id, new_id)
-
-    def collect_variables(self):
-        res = self.expr.collect_variables()
-        return list(set(res))
-
-    def collect_nodes(self):
-        res = [self]
-        res.extend(self.expr.collect_nodes())
-        return res
-
-    def equals(self, other):
-        if type(other) == InstrExpr:
-            return self.expr.equals(other.expr)
-        else:
-            return False
-
-    def get_holes_definitions(self):
-        return self.expr.get_holes_definitions()
-
 
 class InstrHole(Instruction):
     """Instruction representing a hole in the program. Hole is considered to be equal to single
@@ -344,13 +319,17 @@ class InstrHole(Instruction):
         return '???-' + self.id + ' (hole)'
 
 
-class Expression(object):
-    # args: [Expression]
+
+class Expression(Instruction):
+    """Represents an expressions as a tree of operands and their arguments."""
+
     def __init__(self, args=None):
         """
         :param args: (list[Expression]) a list of expressions being arguments
         of this expression.
         """
+        Instruction.__init__(self)
+        self.in_type = Instruction.EXPR
         if args is None:
             args = []
         self.arity = len(args)
@@ -377,6 +356,10 @@ class Expression(object):
         for a in self.args:
             res.extend(a.get_holes_definitions())
         return res
+
+    def to_smt2(self, env):
+        return interm_to_smt2_expr(self, env=env)
+
 
 
 class Op(Expression):
@@ -561,25 +544,28 @@ def rename_base_vars(node, old_bid, new_bid):
 # -------------------------------------------------------------------------------------
 
 
-def interm_to_smt2(instr, env):
-    """Converts any valid instruction in the intermediary representation into equivalent SMT-LIB 2.0 code."""
-    if type(instr.src) == InstrBlock:
-        return interm_to_smt2_ib(instr, env)
-    elif type(instr.src) == InstrExpr:
-        return interm_to_smt2_expr(instr)
-    else:
-        raise Exception(str(type(instr.src)) + ': instruction cannot be converted to smt2! Try enveloping it in the InstructionBlock.')
+# def interm_to_smt2(program, env):
+#     """Converts any valid instruction in the intermediary representation into equivalent SMT-LIB 2.0 code."""
+#     assert(isinstance(program, ProgramInterm))
+#     if type(program.src) == InstrBlock:
+#         return interm_to_smt2_ib(program, env)
+#     elif type(program.src) == InstrExpr:
+#         return interm_to_smt2_expr(program)
+#     else:
+#         raise Exception(str(type(program.src)) + ': instruction cannot be converted to smt2! Try enveloping it in the InstructionBlock.')
 
 
 def interm_to_smt2_ib(ib, env):
+    assert(isinstance(ib, InstrBlock))
     ibt = InstructionBlockTranslator(env.show_comments, env.assignments_as_lets)
     program_constr = ibt.produce_constr_lists(ib)[0]
     CODE_SMT = utils.conjunct_constrs_smt2(program_constr)
     return ProgramSmt2(CODE_SMT, program_constr, ibt.let_declarations)
 
 
-def interm_to_smt2_expr(expr):
-    CODE_SMT = ExprTranslator.apply(expr.src.expr)
+def interm_to_smt2_expr(expr, env=None):
+    assert(isinstance(expr, Expression))
+    CODE_SMT = ExprTranslator.apply(expr)
     return ProgramSmt2(CODE_SMT, [CODE_SMT])
 
 
@@ -646,8 +632,7 @@ class ExprTranslator(object):
         :param fun_annotate_subexpr: (=>str) function for naming logical subexpressions in the formula.
         :return: (str) Expression in SMT-LIB 2.0.
         """
-        if type(expr) == InstrExpr: # TODO: make this function to take only Expressions
-            expr = expr.expr
+        isinstance(expr, Expression)
         t = type(expr)
         if t is Op:
             try:
@@ -720,12 +705,14 @@ class InstructionBlockTranslator(object):
     def produce_constr_lists(self, ib):
         """Returns a tuple of two lists: the first contains only constraints, and the second contains also comments.
         """
+        assert(isinstance(ib, InstrBlock))
         self.reset()
-        return self.produce_constr_lists_internal(ib.src)
+        return self.produce_constr_lists_internal(ib)
 
     def produce_constr_lists_internal(self, ib):
         """Returns a tuple of two lists: the first contains only constraints, and the second contains also comments.
         """
+        assert (isinstance(ib, InstrBlock))
         constr = []
         comm = []
         for instr in ib.instructions:
@@ -752,7 +739,7 @@ class InstructionBlockTranslator(object):
             raise Exception('Loops are currently not supported!')
         elif t is InstrHole:
             raise Exception('Instruction holes are currently not supported!')
-        elif t is InstrExpr:
+        elif isinstance(instr, Expression):
             # Expression instruction in most cases does not change outcome of the program
             # (exception: calling a function which changes state).
             return ['']  #TODO: perhaps ['true'] should be returned for some constraints to be valid...
