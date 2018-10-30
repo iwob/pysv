@@ -39,6 +39,25 @@ class ASTToInstrBlockConverter(ast.NodeVisitor):
             instr = InstrAssign(var, expr)
             return [instr]
 
+        if t == ast.AugAssign:
+            var = Var(node.target.id)
+            opid = ""
+            if isinstance(node.op, ast.Add):
+                opid = "+"
+            elif isinstance(node.op, ast.Sub):
+                opid = "-"
+            elif isinstance(node.op, ast.Mult):
+                opid = "*"
+            elif isinstance(node.op, ast.Div):
+                opid = "/"
+            elif isinstance(node.op, ast.Mod):
+                opid = "mod"
+            else:
+                raise Exception("Unknown operand in python augmented assignment. Supported: '+=', '-=', '*=', '/=', '%='.")
+            expr = ASTExprConverter.create_expr(node.value, self.holes_decls)
+            instr = InstrAssign(var, Op(opid, [var, expr]))
+            return [instr]
+
         elif t == ast.While:
             cond = ASTExprConverter.create_expr(node.test, self.holes_decls)
             body = InstrBlock([])
@@ -214,6 +233,12 @@ class ASTExprConverter:
             for c in node.comparators:
                 args.append(ASTExprConverter.create_expr(c))
             return Op(op_id, args)
+        elif t == ast.Call:
+            fun_name = node.func.id
+            args = []
+            for val in node.args:
+                args.append(ASTExprConverter.create_expr(val))
+            return InstrCall(fun_name, args)
         elif ASTExprConverter.is_python_3 and t == ast.NameConstant:
             if str(node.value) == 'False':
                 return ConstBool(False)

@@ -114,6 +114,7 @@ class Instruction(object):
     WHILE = 'while'
     IF = 'if'
     EXPR = 'expr'
+    CALL = 'call'
 
     def __init__(self):
         self.is_meta = False
@@ -317,6 +318,62 @@ class InstrHole(Instruction):
 
     def __str__(self):
         return '???-' + self.id + ' (hole)'
+
+
+
+
+class InstrCall(Instruction):
+    """Represents a call to a function. This class differs from Op in that it may
+    potentially produce side effects, and it is not a standard operator in Python.
+    For example a print function will be represented as a call."""
+
+    def __init__(self, fun_name, args=None):
+        """
+        :param args: (list[Expression]) a list of expressions being arguments
+        of this function call.
+        """
+        Instruction.__init__(self)
+        self.in_type = Instruction.CALL
+        if args is None:
+            args = []
+        self.is_variable = False
+        self.is_hole = False
+        self.id = fun_name
+        self.args = args
+
+    def rename_var(self, old_id, new_id):
+        for arg in self.args:
+            arg.rename_var(old_id, new_id)
+
+    def collect_variables(self):
+        res = []
+        for arg in self.args:
+            res.extend(arg.collect_variables())
+        return list(set(res))
+
+    def collect_nodes(self):
+        res = [self]
+        for arg in self.args:
+            res.extend(arg.collect_nodes())
+        return res
+
+    def equals(self, other):
+        if type(other) == InstrCall:
+            return self.id == other.id and \
+                   len(self.args) == len(other.args) and \
+                   all(self.args[i].equals(other.args[i]) for i in range(0, len(self.args)))
+        else:
+            return False
+
+    def get_holes_definitions(self):
+        res = []
+        for a in self.args:
+            res.extend(a.get_holes_definitions())
+        return res
+
+    def to_smt2(self, env):
+        return interm_to_smt2_expr(self, env=env)
+
 
 
 
