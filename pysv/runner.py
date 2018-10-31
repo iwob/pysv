@@ -48,5 +48,5 @@ def run_from_options(env):
         return res
 
     else:
-        print("Task was not specified! Use either --verify, --example or --synthesize.")
+        print("Task was not specified! Use either: --verify, --example, --synthesize.")
         exit()

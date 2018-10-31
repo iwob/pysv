@@ -3,18 +3,27 @@ from pysv.interm import *
 from pysv import contract
 from pysv import utils
 
-class ConverterSSA(object):
-    """ConverterSSA is used to convert instruction block to the SSA form, in which every new assignment to a variable is equivalent with creating new ("marked") version of this variable. SSA form is necessary in the context of SMT verification and synthesis because of representing a program in the form of logical formulas.
 
+class ConverterSSA(object):
+    """ConverterSSA is used to convert instruction block to the SSA (Single Static Assignment)
+     form, in which every new assignment to a variable is equivalent to creating a new ("marked")
+     version of this variable. SSA form is necessary in the context of SMT verification and
+     synthesis because in logical formulas we must associate each variable with exactly one value.
 
     TODO:
-    - Currently every assignment results in creating marked variable, even if this is the first use of this variable. It is important to note that if certain variable is present in the precondition, then indeed it's first program assignment must be marked to avoid errors.
+    - Currently every assignment results in creating marked variable, even if this is the first
+     use of this variable. It is important to note that if certain variable is present in the
+     precondition, then indeed it's first program assignment must be marked to avoid errors.
 
     Attributes:
     -----------
-    :param ssa_marker: (str) Marker being added on the end of a variable name to mark subsequent assignments. (default="'")
-    :param ssa_quote_marked_vars: (bool) Specifies, if ssa-marked variables should be quoted with |, a special symbol in SMT-LIB. (default=True)
-    :param ssa_quote_unmarked_vars: (bool) Specifies, if normal (unmarked) variables should be quoted (for aesthetic reasons). (default=False)
+    :param ssa_marker: (str) Marker being added on the end of a variable name to mark
+     subsequent assignments. (default="'")
+    :param ssa_quote_marked_vars: (bool) Specifies, if ssa-marked variables should be quoted
+     with '|', a special symbol in SMT-LIB which allows for arbitrary characters in names.
+     (default=True)
+    :param ssa_quote_unmarked_vars: (bool) Specifies, if normal (unmarked) variables should be
+     also quoted (for aesthetic reasons). (default=False)
     """
 
     def __init__(self, ssa_marker = "'", ssa_quote_marked_vars = True, ssa_quote_unmarked_vars = False):
@@ -34,15 +43,18 @@ class ConverterSSA(object):
 
 
     def convert(self, main_ib_0, program_vars):
-        """Returns new instruction block and postcondition converted to SSA (Single Static Assignment) form.
+        """Returns new instruction block and postcondition converted to SSA
+         (Single Static Assignment) form.
 
         ISSUES:\n
-        - all variables are treated as global. Local variables in for example 'if' bodies lead to errors if
-        those variables were not declared before 'if'.
+        - all variables are treated as global. Local variables in for example 'if' bodies
+         lead to errors if those variables were not declared before 'if'.
 
         :param main_ib_0: instruction block representing the whole program.
-        :param program_vars: ProgramVars object containing information about variables and their types.
-        :return: A tuple containing the SSA form of the given program (block of instructions) and postcondition.
+        :param program_vars: ProgramVars object containing information about variables and
+         their types.
+        :return: A tuple containing the SSA form of the given program and index of variable
+         assignments.
         """
         assert type(main_ib_0) == InstrBlock
         assert type(program_vars) == contract.ProgramVars
@@ -58,19 +70,19 @@ class ConverterSSA(object):
             for i in range(len(ib.instructions)):
                 instr = ib.instructions[i]
                 # print('(SSA) processing instr: '+str(instr))
-                t = type(instr)
-                if t is InstrAssign:
+                if isinstance(instr, InstrAssign):
                     convert_instr_assign(instr, ib, i, local_assign_nums)
                     # print('local after InstrAssign: '+str(local_assign_nums))
-                elif t is InstrIf:
+                elif isinstance(instr, InstrIf):
                     convert_instr_if(instr, local_assign_nums)
                     # print('local after InstrIf: '+str(local_assign_nums))
                 elif len(instr.instruction_blocks) > 0: # other instruction with >0 contained blocks
                     for instr_block in instr.instruction_blocks:
                         convert_instr_block(instr_block, local_assign_nums)
 
+
         def convert_instr_assign(instr, ib, instr_num, parent_assign_nums):
-            assert(type(instr) == InstrAssign)
+            assert isinstance(instr, InstrAssign)
             # Converting expression part
             self.update_expr(instr.expr, parent_assign_nums)
 
@@ -84,8 +96,9 @@ class ConverterSSA(object):
                 #TODO: update references also in block containing this block
                 #self.update_future_references(ib, x, new_id, instr_num+1)
 
+
         def convert_instr_if(instr, parent_assign_nums):
-            assert (type(instr) == InstrIf)
+            assert isinstance(instr, InstrIf)
             dict_before_if = parent_assign_nums.copy()
 
             # Converting condition part
@@ -109,7 +122,6 @@ class ConverterSSA(object):
                     update_dictionary(parent_assign_nums, i.var.base_id, num)
 
 
-
         def inc_assign_num(base_id, dictionary):
             """Updates dictionary with the number of subsequent assignments per variable name.
 
@@ -122,6 +134,7 @@ class ConverterSSA(object):
             else:
                 dictionary[base_id] = 1
 
+
         def update_dictionary(dictionary, base_id, new_val):
             """Updates dictionary with the number of subsequent assignments per variable name.
 
@@ -130,6 +143,7 @@ class ConverterSSA(object):
             :param new_val:
             """
             dictionary[base_id] = new_val
+
 
         def balance_var_level_if(instr, dict_before_if):
             """Adds meta-instructions for blocks of IF for all variables in if's bodies.
@@ -162,6 +176,7 @@ class ConverterSSA(object):
             for v in sorted(s.vars_dict.keys()):
                 level = main_assign_nums[v]
                 balance_var_level(instr, v, level, dict_before_if)
+
 
         # if_instr: InstrIf, varid: String, nl: Int, stats: StatsIf
         def balance_var_level(if_instr, base_id, level, dict_before_if):
@@ -201,6 +216,7 @@ class ConverterSSA(object):
             meta_in = InstrAssign(var_L, var_R)
             meta_in.set_meta(True)
             return meta_in
+
 
         def get_last_id_of_var(ib, base_id, dict_before_if):
             """Returns the last id of a variable (the one with the most time markers).
@@ -276,6 +292,7 @@ class StatsIf(object):
         self.orelse = StatsBlock(if_instr.orelse)
         self.vars_dict = self.body.vars_dict.copy()
         self.vars_dict.update(self.orelse.vars_dict)
+
 
 
 class StatsBlock(object):
