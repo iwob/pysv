@@ -27,13 +27,12 @@ class ASTToInstrBlockConverter(ast.NodeVisitor):
         else:
             raise Exception('Provided object of class ' + str(type(node)) + ' is not a Module instance!')
 
-    # node: an AST node
+
     def my_visit_internal(self, node):
         """Returns a list of instructions of the given AST node."""
         # print('[mv] ' + ast.dump(node))
         t = type(node)
         if t == ast.Assign:
-            #print("NODE Assign: "+str(node.targets[0].id))
             var = Var(node.targets[0].id) # TODO: check what if there are several targets
             expr = ASTExprConverter.create_expr(node.value, self.holes_decls)
             instr = InstrAssign(var, expr)
@@ -78,12 +77,16 @@ class ASTToInstrBlockConverter(ast.NodeVisitor):
             return [instr]
 
         elif t == ast.Expr:
-            #print("NODE Expr: "+str(node))
             expr = ASTExprConverter.create_expr(node.value, self.holes_decls)
             if expr.is_hole:
                 return [InstrHole(expr.hole_decl)]
             else:
                 return [expr]
+
+        elif t == ast.Assert:
+            expr = ASTExprConverter.create_expr(node.test, self.holes_decls)
+            return [InstrAssert(expr)]
+
         else:
             print('NODE: '+str(node)+' (not analysed)')
             return []

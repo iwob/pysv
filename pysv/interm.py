@@ -109,12 +109,14 @@ class InstrBlock(object):
         return res
 
 
+
 class Instruction(object):
     ASSIGN = 'assign'
     WHILE = 'while'
     IF = 'if'
     EXPR = 'expr'
     CALL = 'call'
+    ASSERT = 'assert'
 
     def __init__(self):
         self.is_meta = False
@@ -142,6 +144,41 @@ class Instruction(object):
 
     def collect_nodes(self):
         return [self]
+
+
+
+class InstrAssert(Instruction):
+    def __init__(self, expr):
+        Instruction.__init__(self)
+        self.in_type = Instruction.ASSERT
+        self.expr = expr
+
+    def __str__(self):
+        res = 'assert({0})'.format(self.expr)
+        if self.is_meta:
+            res += '  (meta)'
+        return res
+
+    def rename_var(self, old_id, new_id):
+        self.expr.rename_var(old_id, new_id)
+
+    def collect_variables(self):
+        res = self.expr.collect_variables()
+        return list(set(res))
+
+    def collect_nodes(self):
+        res = self.expr.collect_nodes()
+        return res
+
+    def equals(self, other):
+        if type(other) == InstrAssert:
+            return self.expr.equals(other.expr)
+        else:
+            return False
+
+    def get_holes_definitions(self):
+        return self.expr.get_holes_definitions()
+
 
 
 class InstrAssign(Instruction):
@@ -173,7 +210,6 @@ class InstrAssign(Instruction):
         return res
 
     def equals(self, other):
-        """Checks, if provided instruction block has the same structure and instructions as this one."""
         if type(other) == InstrAssign:
             return self.var.equals(other.var) and \
                    self.expr.equals(other.expr)
@@ -182,6 +218,7 @@ class InstrAssign(Instruction):
 
     def get_holes_definitions(self):
         return self.expr.get_holes_definitions()
+
 
 
 class InstrWhile(Instruction):
@@ -215,7 +252,6 @@ class InstrWhile(Instruction):
         return res
 
     def equals(self, other):
-        """Checks, if provided instruction block has the same structure and instructions as this one."""
         if type(other) != InstrWhile:
             return False
         else:
@@ -227,6 +263,7 @@ class InstrWhile(Instruction):
         for ib in self.instruction_blocks:
             res.extend(ib.get_holes_definitions())
         return res
+
 
 
 class InstrIf(Instruction):
@@ -270,7 +307,6 @@ class InstrIf(Instruction):
         return res
 
     def equals(self, other):
-        """Checks, if provided instruction block has the same structure and instructions as this one."""
         if type(other) == InstrIf:
             return self.condition.equals(other.condition) and \
                    self.body.equals(other.body) and \
@@ -318,7 +354,6 @@ class InstrHole(Instruction):
 
     def __str__(self):
         return '???-' + self.id + ' (hole)'
-
 
 
 

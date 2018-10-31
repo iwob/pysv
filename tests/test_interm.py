@@ -29,6 +29,21 @@ class TestsInterm(unittest.TestCase):
         self.assertEquals([ib, a, v, op, var_y, const5], ib.collect_nodes())
 
 
+    def test_interm_assert(self):
+        code = """
+a = 10
+assert a > 0
+"""
+        ib = ast_utils.py_to_interm_ib(code)
+        ins = ib.src.instructions
+
+        self.assertEquals(InstrAssign, type(ins[0]))
+        self.assertEquals("a", ins[0].var.id)
+        self.assertEquals(InstrAssert, type(ins[1]))
+        self.assertEquals("a", ins[1].expr.args[0].id)
+        self.assertEquals(0, ins[1].expr.args[1].value)
+
+
     def test_interm_aug_assign(self):
         code = """
 a += 1
@@ -49,7 +64,6 @@ e %= 3
         check(ins[2], "c", "*")
         check(ins[3], "d", "/")
         check(ins[4], "e", "mod")
-
 
 
     def test_interm_if(self):
