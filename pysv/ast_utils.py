@@ -39,7 +39,8 @@ class ASTToInstrBlockConverter(ast.NodeVisitor):
             return [instr]
 
         if t == ast.AugAssign:
-            var = Var(node.target.id)
+            var1 = Var(node.target.id)
+            var2 = Var(node.target.id)
             opid = ""
             if isinstance(node.op, ast.Add):
                 opid = "+"
@@ -54,7 +55,7 @@ class ASTToInstrBlockConverter(ast.NodeVisitor):
             else:
                 raise Exception("Unknown operand in python augmented assignment. Supported: '+=', '-=', '*=', '/=', '%='.")
             expr = ASTExprConverter.create_expr(node.value, self.holes_decls)
-            instr = InstrAssign(var, Op(opid, [var, expr]))
+            instr = InstrAssign(var1, Op(opid, [var2, expr]))
             return [instr]
 
         elif t == ast.While:

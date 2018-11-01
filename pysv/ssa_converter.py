@@ -83,6 +83,14 @@ class ConverterSSA(object):
             self.update_expr(instr.expr, parent_assign_index)
 
 
+        def convert_instr_call(instr, parent_assign_index):
+            assert isinstance(instr, InstrCall)
+            # Converting expression
+            for a in instr.args:
+                assert isinstance(a, Expression)
+                self.update_expr(a, parent_assign_index)
+
+
         def convert_instr_assign(instr, parent_assign_index):
             assert isinstance(instr, InstrAssign)
             # Converting expression
@@ -91,7 +99,6 @@ class ConverterSSA(object):
             # Converting variable
             x = instr.var.base_id
             inc_assign_num(x, assign_index)  # updating global variable dict
-            update_dictionary(parent_assign_index, x, assign_index[x]) # for further occurrences of variable in block.
             if assign_index[x] > 1: # not the first (initial) assignment to a variable
                 new_id = self.mark_var(x, assign_index[x] - 1)
                 instr.var.id = new_id
@@ -125,6 +132,17 @@ class ConverterSSA(object):
                     num = i.var.id.count("'") + 1
                     update_dictionary(assign_index, i.var.base_id, num)
                     update_dictionary(parent_assign_index, i.var.base_id, num)
+
+
+        def convert_instr_while(instr, parent_assign_index):
+            global assign_index
+            assert isinstance(instr, InstrWhile)
+
+            # Converting condition
+            self.update_expr(instr.condition, parent_assign_index)
+
+            ib, assign_index = self.convert_for_index(instr.body, parent_assign_index)
+            instr.body = ib
 
 
         def inc_assign_num(base_id, dictionary):
@@ -248,12 +266,16 @@ class ConverterSSA(object):
                 convert_instr_assign(instr, assign_index)
             elif isinstance(instr, InstrIf):
                 convert_instr_if(instr, assign_index)
+            elif isinstance(instr, InstrWhile):
+                convert_instr_while(instr, assign_index)
+            elif isinstance(instr, InstrCall):
+                convert_instr_call(instr, assign_index)
             elif isinstance(instr, InstrHole):
                 raise Exception('Instruction holes are currently not supported!')
             else:
                 raise Exception("Unsupported instruction of type {0} encountered during SSA conversion.".format(type(instr)))
 
-        return  main_ib, assign_index
+        return main_ib, assign_index
 
 
     def update_expr(self, expr, dictionary):
@@ -298,6 +320,8 @@ class ConverterSSA(object):
          the variable. Apostrophe is not allowed in simple symbols in SMT-LIB 2.0,
          so variable names with ' must be quoted symbols (marked with '|' at the ends).
         """
+        if num == 0:
+            return base_id
         name = base_id + (self.ssa_marker * num)
         if (num > 0 and self.ssa_quote_marked_vars) or \
            (num == 0 and self.ssa_quote_unmarked_vars):
@@ -311,9 +335,10 @@ class ConverterSSA(object):
          end of the variable. Apostrophe is not allowed in simple symbols in SMT-LIB 2.0,
          so variables names must be quoted symbols (marked with '|' at the ends).
         """
+        if num == 0:
+            return base_id
         name = base_id + self.ssa_marker + str(num)
-        if (num > 0 and self.ssa_quote_marked_vars) or \
-           (num == 0 and self.ssa_quote_unmarked_vars):
+        if self.ssa_quote_marked_vars:
             return '|' + name + '|'
         else:
             return name
@@ -379,20 +404,23 @@ class StatsBlock(object):
 
 
 
-def convert(ib, post, program_vars):
-    """Returns new instruction block and postcondition converted to SSA (Single Static Assignment) form.
-    This function acts as a wrapper for ConverterSSA object.
+def convert(ib, post, program_vars, ssa_quote_marked_vars = True, ssa_quote_unmarked_vars = False,
+            ssa_mark_indexed = False):
+    """Returns an instruction block and postcondition converted to SSA (Single
+    Static Assignment) form. This function acts as a wrapper for ConverterSSA object.
 
     :param ib: (ProgramInterm) instruction block representing the whole program.
-    :param post: (ProgramInterm) expression instruction for postcondition.
-    :param program_vars: ProgramVars object containing information about variables and their types.
+    :param post: (Expression) expression representing a postcondition.
+    :param program_vars: (ProgramVars) information about variables and their types.
     :return: A tuple containing the SSA form of the given program (block of instructions) and postcondition.
     """
     assert isinstance(program_vars, contract.ProgramVars)
     assert isinstance(ib, ProgramInterm)
     assert isinstance(post, Expression)
 
-    ssa_conv = ConverterSSA()
+    ssa_conv = ConverterSSA(ssa_quote_marked_vars = ssa_quote_marked_vars,
+                            ssa_quote_unmarked_vars = ssa_quote_unmarked_vars,
+                            ssa_mark_indexed=ssa_mark_indexed)
     # Converting program's body.
     src_ib_ssa, assign_index = ssa_conv.convert(ib.src, program_vars)
     # Converting postcondition.
@@ -404,3 +432,29 @@ def convert(ib, post, program_vars):
     utils.logger.debug(str(src_ib_ssa))
 
     return ProgramInterm(src_ib_ssa), post
+
+
+
+def convert_ib(ib, program_vars, ssa_quote_marked_vars = True, ssa_quote_unmarked_vars = False,
+               ssa_mark_indexed = False):
+    """Returns an instruction block converted to SSA (Single Static
+     Assignment) form. This function acts as a wrapper for ConverterSSA object.
+
+    :param ib: (ProgramInterm) instruction block representing the whole program.
+    :param program_vars: (ProgramVars) information about variables and their types.
+    :return: (ProgramInterm) the SSA form of the given program.
+    """
+    assert isinstance(program_vars, contract.ProgramVars)
+    assert isinstance(ib, ProgramInterm)
+
+    ssa_conv = ConverterSSA(ssa_quote_marked_vars = ssa_quote_marked_vars,
+                            ssa_quote_unmarked_vars = ssa_quote_unmarked_vars,
+                            ssa_mark_indexed=ssa_mark_indexed)
+    src_ib_ssa, assign_index = ssa_conv.convert(ib.src, program_vars)
+
+    utils.logger.debug('------------------------------')
+    utils.logger.debug('SSA form:')
+    utils.logger.debug('------------------------------')
+    utils.logger.debug(str(src_ib_ssa))
+
+    return ProgramInterm(src_ib_ssa)

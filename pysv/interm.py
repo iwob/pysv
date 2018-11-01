@@ -272,8 +272,10 @@ class InstrWhile(Instruction):
 
 class InstrIf(Instruction):
     # cond: Expression, body: InstructionBlock, orelse: InstructionBlock
-    def __init__(self, cond, body, orelse=InstrBlock([])):
+    def __init__(self, cond, body, orelse=None):
         Instruction.__init__(self)
+        if orelse is None:
+            orelse = InstrBlock([])
         self.in_type = Instruction.IF
         self.condition = cond
         self.body = body

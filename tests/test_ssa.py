@@ -1,7 +1,8 @@
 import unittest
 from pysv import ast_utils
 from pysv import ssa_converter
-from pysv import contract
+from pysv.contract import *
+from pysv.interm import *
 from pysv import smt_synthesis
 
 
@@ -10,12 +11,12 @@ class TestsSSA(unittest.TestCase):
     def test_program_already_in_ssa_form(self):
         code = 'x = 0; y = 1; z = 2'
         post = 'z < 2'
-        vars = contract.ProgramVars({'x': 'Int', 'y': 'Int'}, {'z': 'Int'})
+        vars = ProgramVars({'x': 'Int', 'y': 'Int'}, {'z': 'Int'})
 
         # Running SSA conversion
         ib = ast_utils.py_to_interm_ib(code)
         post = ast_utils.py_to_interm_expr(post)
-        ib2, post2 = ssa_converter.convert(ib, post, vars)
+        ib2, post2 = ssa_converter.convert(ib, post, vars, ssa_mark_indexed=False)
         vars.add_marked_variables(ib2.src.collect_variables())
 
         # Assertions
@@ -40,12 +41,12 @@ class TestsSSA(unittest.TestCase):
     def test_simple_program_no_ifs(self):
         code = 'x=0; y=1; z=2; x=3; y=4'
         post = 'x<2 and z<2'
-        vars = contract.ProgramVars({'x': 'Int', 'y': 'Int', 'z': 'Int'})
+        vars = ProgramVars({'x': 'Int', 'y': 'Int', 'z': 'Int'})
 
         # Running SSA conversion
         ib = ast_utils.py_to_interm_ib(code)
         post = ast_utils.py_to_interm_expr(post)
-        ib2, post2 = ssa_converter.convert(ib, post, vars)
+        ib2, post2 = ssa_converter.convert(ib, post, vars, ssa_mark_indexed=False)
 
         # Assertions
         self.assertEquals("|x'|", ib2.src.instructions[0].var.id)
@@ -56,6 +57,22 @@ class TestsSSA(unittest.TestCase):
         self.assertEquals(5, ib2.src.size())
         self.assertEquals("|x''|", post2.args[0].args[0].id)
         self.assertEquals("|z'|", post2.args[1].args[0].id)
+
+
+    def test_interm_assert(self):
+        code = """
+a = 10
+assert a > 0
+"""
+        ib = ast_utils.py_to_interm_ib(code)
+        ib = ssa_converter.convert_ib(ib, ProgramVars({"a": "Int"}), ssa_mark_indexed=False)
+        ins = ib.src.instructions
+
+        self.assertEquals(InstrAssign, type(ins[0]))
+        self.assertEquals("|a'|", ins[0].var.id)
+        self.assertEquals(InstrAssert, type(ins[1]))
+        self.assertEquals("|a'|", ins[1].expr.args[0].id)
+        self.assertEquals(0, ins[1].expr.args[1].value)
 
 
     def test_simple_program_one_if(self):
@@ -72,12 +89,12 @@ x = x + 5
         """
 
         post = 'x<2 and y<2'
-        vars = contract.ProgramVars({'x': 'Int'}, {'y': 'Int'})
+        vars = ProgramVars({'x': 'Int'}, {'y': 'Int'})
 
         # Running SSA conversion
         ib = ast_utils.py_to_interm_ib(code)
         post = ast_utils.py_to_interm_expr(post)
-        ib2, post2 = ssa_converter.convert(ib, post, vars)
+        ib2, post2 = ssa_converter.convert(ib, post, vars, ssa_mark_indexed=False)
 
         # Assertions
         self.assertEquals("|x'|", ib2.src.instructions[0].var.id)
@@ -120,7 +137,6 @@ x = x + 5
         self.assertEquals("|y'|", if_instr.orelse[3].expr.id)
         self.assertEquals(True, if_instr.orelse[3].is_meta)
 
-
         # After if
         self.assertEquals("|x''''''|", ib2.src.instructions[3].var.id)
         self.assertEquals("|x'''''|", ib2.src.instructions[3].expr.args[0].id)
@@ -143,7 +159,7 @@ else:
         """
 
         post = 'True'
-        vars = contract.ProgramVars({'acc': 'Int', 'limit': 'Int'}, {'newAcc': 'Int',  'trigger': 'Bool'})
+        vars = ProgramVars({'acc': 'Int', 'limit': 'Int'}, {'newAcc': 'Int',  'trigger': 'Bool'})
 
         grammar_spec = """
         (
@@ -163,10 +179,79 @@ else:
         self.assertEquals({'acc': 'Int', 'limit': 'Int', 'newAcc': 'Int'}, holes[0].vars)
 
         post = ast_utils.py_to_interm_expr(post)
-        ib2, post2 = ssa_converter.convert(ib, post, vars)
+        ib2, post2 = ssa_converter.convert(ib, post, vars, ssa_mark_indexed=False)
 
 
         holes = ib2.src.get_holes_definitions()
         self.assertEquals(1, len(holes))
         self.assertEquals({'acc': 'Int', 'limit': 'Int', "|newAcc'|": 'Int'}, holes[0].vars)
 
+
+    def test_ssa_while(self):
+        code = """
+i = 1
+while i < 6:
+    print(i)
+    i += 1
+i *= 2
+"""
+        ib = ast_utils.py_to_interm_ib(code)
+        ib = ssa_converter.convert_ib(ib, ProgramVars({"i":"Int"}), ssa_mark_indexed=False)
+        ins = ib.src.instructions
+
+        self.assertEquals(InstrAssign, type(ins[0]))
+        self.assertEquals("|i'|", ins[0].var.id)
+
+        self.assertEquals(InstrWhile, type(ins[1]))
+        self.assertEquals(Op, type(ins[1].condition))
+        self.assertEquals("<", ins[1].condition.id)
+        self.assertEquals("|i'|", ins[1].condition.args[0].id)
+        self.assertEquals(InstrCall, type(ins[1].body[0]))
+        self.assertEquals("print", ins[1].body[0].id)
+        self.assertEquals("|i'|", ins[1].body[0].args[0].id)
+        self.assertEquals(InstrAssign, type(ins[1].body[1]))
+        self.assertEquals("|i''|", ins[1].body[1].var.id)
+        self.assertEquals(InstrAssign, type(ins[2]))
+        self.assertEquals("|i'''|", ins[2].var.id)
+        self.assertEquals("|i''|", ins[2].expr.args[0].id)
+        self.assertEquals(2, ins[2].expr.args[1].value)
+
+
+
+    def test_ssa_nested_ifs(self):
+        code = """
+i = 3
+if i > 0:
+    i -= 1
+    if i > 0:
+        i -= 1
+        if i > 0:
+            i -= 1
+i *= 2
+"""
+        ib = ast_utils.py_to_interm_ib(code)
+        ib = ssa_converter.convert_ib(ib, ProgramVars(), ssa_mark_indexed=True)
+        ins = ib.src.instructions
+
+        self.assertEquals(InstrAssign, type(ins[0]))
+        self.assertEquals("i", ins[0].var.id)
+
+        if1 = ins[1]
+        self.assertEquals(InstrIf, type(if1))
+        self.assertEquals("i", if1.condition.args[0].id)
+        self.assertEquals(InstrAssign, type(if1.body[0]))
+        self.assertEquals("|i'1|", if1.body[0].var.id)
+
+        if2 = ins[1].body[1]
+        self.assertEquals(InstrIf, type(if2))
+        self.assertEquals("|i'1|", if2.condition.args[0].id)
+        self.assertEquals(InstrAssign, type(if2.body[0]))
+        self.assertEquals("|i'2|", if2.body[0].var.id)
+
+        if3 = ins[1].body[1].body[1]
+        self.assertEquals(InstrIf, type(if3))
+        self.assertEquals("|i'2|", if3.condition.args[0].id)
+        self.assertEquals(InstrAssign, type(if3.body[0]))
+        self.assertEquals("|i'3|", if3.body[0].var.id)
+
+        #TODO: Add tests on the meta instructions and "i *= 2"

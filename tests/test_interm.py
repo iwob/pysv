@@ -1,6 +1,7 @@
 import unittest
 from pysv.interm import *
-from pysv import ast_utils
+from pysv.contract import *
+from pysv import ast_utils, ssa_converter
 
 
 class TestsInterm(unittest.TestCase):
@@ -103,12 +104,16 @@ x = x + 5
         self.assertEquals("x", ins[3].var.id)
 
 
+
+
+
     def test_interm_while(self):
         code = """
 i = 1
 while i < 6:
     print(i)
     i += 1
+i *= 2
 """
         ib = ast_utils.py_to_interm_ib(code)
         ins = ib.src.instructions
@@ -119,8 +124,13 @@ while i < 6:
         self.assertEquals(InstrWhile, type(ins[1]))
         self.assertEquals(Op, type(ins[1].condition))
         self.assertEquals("<", ins[1].condition.id)
+        self.assertEquals("i", ins[1].condition.args[0].id)
         self.assertEquals(InstrCall, type(ins[1].body[0]))
         self.assertEquals("print", ins[1].body[0].id)
         self.assertEquals("i", ins[1].body[0].args[0].id)
         self.assertEquals(InstrAssign, type(ins[1].body[1]))
         self.assertEquals("i", ins[1].body[1].var.id)
+        self.assertEquals(InstrAssign, type(ins[2]))
+        self.assertEquals("i", ins[2].var.id)
+        self.assertEquals("i", ins[2].expr.args[0].id)
+        self.assertEquals(2, ins[2].expr.args[1].value)
