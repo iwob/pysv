@@ -5,6 +5,13 @@ from pysv import ast_utils
 
 class TestsInterm(unittest.TestCase):
 
+    def test_var_base_id(self):
+        self.assertEquals("vec", Var.base_id("vec'"))
+        self.assertEquals("vec", Var.base_id("vec''"))
+        self.assertEquals("vec", Var.base_id("|vec''|"))
+        self.assertEquals("v", Var.base_id("|v'5|"))
+
+
     def test_rename_vars(self):
         ib = InstrBlock([])
         ib.append(InstrAssign(Var('x'), Op('+', [Var("|y''|"), ConstInt('5')])))

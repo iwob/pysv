@@ -4,6 +4,7 @@ from pysv import contract
 from pysv import utils
 
 
+
 class ConverterSSA(object):
     """ConverterSSA is used to convert instruction block to the SSA (Single Static Assignment)
      form, in which every new assignment to a variable is equivalent to creating a new ("marked")
@@ -26,23 +27,15 @@ class ConverterSSA(object):
      also quoted (for aesthetic reasons). (default=False)
     """
 
-    def __init__(self, ssa_marker = "'", ssa_quote_marked_vars = True, ssa_quote_unmarked_vars = False):
+    def __init__(self, ssa_marker = "'", ssa_quote_marked_vars = True, ssa_quote_unmarked_vars = False,
+                 ssa_mark_indexed=False):
         self.ssa_marker = ssa_marker
         self.ssa_quote_marked_vars = ssa_quote_marked_vars
         self.ssa_quote_unmarked_vars = ssa_quote_unmarked_vars
-
-    # ib: InstructionBlock; old_id, new_id: String, start_from: Int.
-    # def update_future_references(self, ib, old_id, new_id, start_from = 0):
-    #     """Changes a name of the given variable starting from the specified instruction in the block."""
-    #     for i in range(start_from, len(ib.instructions)):
-    #         instr = ib.instructions[i]
-    #         instr.rename_var(old_id, new_id)
-
-    # main_assign_nums and its copies store for example 'y':2, where 2 means, that next assignment to y will be
-    # marked with 2 markers (in other words, y was assigned 2 times before and versions y and y' exist).
+        self.ssa_mark_indexed = ssa_mark_indexed
 
 
-    def convert(self, main_ib_0, program_vars):
+    def convert(self, ib, program_vars):
         """Returns new instruction block and postcondition converted to SSA
          (Single Static Assignment) form.
 
@@ -50,67 +43,79 @@ class ConverterSSA(object):
         - all variables are treated as global. Local variables in for example 'if' bodies
          lead to errors if those variables were not declared before 'if'.
 
-        :param main_ib_0: instruction block representing the whole program.
-        :param program_vars: ProgramVars object containing information about variables and
-         their types.
+        :param ib: (InstrBlock) instruction block representing the whole program.
+        :param program_vars: (list[dict]) ProgramVars object containing information about variables
+         and their types.
         :return: A tuple containing the SSA form of the given program and index of variable
          assignments.
         """
-        assert type(main_ib_0) == InstrBlock
-        assert type(program_vars) == contract.ProgramVars
+        assert isinstance(program_vars, contract.ProgramVars)
+        # Assignment index tracks how many times variables were assigned to.
+        # Input variables are assumed to start with some assigned value.
+        assign_index = {v: 1 for v in program_vars.input_vars}
+        return self.convert_for_index(ib, assign_index)
+
+
+    def convert_for_index(self, main_ib_0, assign_index):
+        """Returns new instruction block and postcondition converted to SSA
+         (Single Static Assignment) form.
+
+        ISSUES:\n
+        - all variables are treated as global. Local variables in for example 'if' bodies
+         lead to errors if those variables were not declared before 'if'.
+
+        :param main_ib_0: (InstrBlock) instruction block representing the whole program.
+        :param assign_index: (dict[str, int]) Dictionary storing the number of times that a
+         given variable was used. If not specified, it will be automatically initialized so
+         that input variables start with 1 assignment.
+        :return: A tuple containing the SSA form of the given program and index of variable
+         assignments.
+        """
+        assert isinstance(main_ib_0, InstrBlock)
+        assert isinstance(assign_index, dict)
 
         main_ib = copy.deepcopy(main_ib_0)
-        main_assign_nums = {v: 1 for v in program_vars.input_vars}
 
 
-        def convert_instr_block(ib, parent_assign_nums):
-            assert(type(ib) == InstrBlock)
-            local_assign_nums = parent_assign_nums.copy()
-            # local_assign_nums is to be appropriately updated for every instruction
-            for i in range(len(ib.instructions)):
-                instr = ib.instructions[i]
-                # print('(SSA) processing instr: '+str(instr))
-                if isinstance(instr, InstrAssign):
-                    convert_instr_assign(instr, ib, i, local_assign_nums)
-                    # print('local after InstrAssign: '+str(local_assign_nums))
-                elif isinstance(instr, InstrIf):
-                    convert_instr_if(instr, local_assign_nums)
-                    # print('local after InstrIf: '+str(local_assign_nums))
-                elif len(instr.instruction_blocks) > 0: # other instruction with >0 contained blocks
-                    for instr_block in instr.instruction_blocks:
-                        convert_instr_block(instr_block, local_assign_nums)
+        def convert_instr_assert(instr, parent_assign_index):
+            assert isinstance(instr, InstrAssert)
+            # Converting expression
+            self.update_expr(instr.expr, parent_assign_index)
 
 
-        def convert_instr_assign(instr, ib, instr_num, parent_assign_nums):
+        def convert_instr_assign(instr, parent_assign_index):
             assert isinstance(instr, InstrAssign)
-            # Converting expression part
-            self.update_expr(instr.expr, parent_assign_nums)
+            # Converting expression
+            self.update_expr(instr.expr, parent_assign_index)
 
-            # Converting variable part
+            # Converting variable
             x = instr.var.base_id
-            inc_assign_num(x, main_assign_nums) # updated is global variable dict
-            update_dictionary(parent_assign_nums, x, main_assign_nums[x]) # for further occurrences of variable in block.
-            if main_assign_nums[x] > 1: # not the first (initial) assignment to a variable
-                new_id = self.mark_var(x, main_assign_nums[x]-1)
+            inc_assign_num(x, assign_index)  # updating global variable dict
+            update_dictionary(parent_assign_index, x, assign_index[x]) # for further occurrences of variable in block.
+            if assign_index[x] > 1: # not the first (initial) assignment to a variable
+                new_id = self.mark_var(x, assign_index[x] - 1)
                 instr.var.id = new_id
                 #TODO: update references also in block containing this block
                 #self.update_future_references(ib, x, new_id, instr_num+1)
 
 
-        def convert_instr_if(instr, parent_assign_nums):
+        def convert_instr_if(instr, parent_assign_index):
             assert isinstance(instr, InstrIf)
-            dict_before_if = parent_assign_nums.copy()
+            dict_before_if = parent_assign_index.copy()
 
-            # Converting condition part
-            self.update_expr(instr.condition, parent_assign_nums)
+            # Converting condition
+            self.update_expr(instr.condition, parent_assign_index)
 
             # Converting both body blocks of IF. Copy of parent_assign_nums dict will be made inside.
             # print('BODY BRANCH')
-            convert_instr_block(instr.body, parent_assign_nums)
-            # print('ORELSE BRANCH')
-            convert_instr_block(instr.orelse, parent_assign_nums)
+            ib, parent_assign_index = self.convert_for_index(instr.body, parent_assign_index)
+            instr.body = ib
 
-            # Balancing (leveling) IF branches.
+            # print('ORELSE BRANCH')
+            ib, parent_assign_index = self.convert_for_index(instr.orelse, parent_assign_index)
+            instr.orelse = ib
+
+            # Balancing (leveling) of IF branches.
             balance_var_level_if(instr, dict_before_if)
 
             # Finding meta instructions containing if-leveling and updating parent assigns dict.
@@ -118,16 +123,16 @@ class ConverterSSA(object):
             for i in instr.body.instructions:
                 if i.is_meta and i.in_type is Instruction.ASSIGN:
                     num = i.var.id.count("'") + 1
-                    update_dictionary(main_assign_nums, i.var.base_id, num)
-                    update_dictionary(parent_assign_nums, i.var.base_id, num)
+                    update_dictionary(assign_index, i.var.base_id, num)
+                    update_dictionary(parent_assign_index, i.var.base_id, num)
 
 
         def inc_assign_num(base_id, dictionary):
-            """Updates dictionary with the number of subsequent assignments per variable name.
+            """Updates dictionary of the number of assignments per variable name.
 
-            :param base_id: base ID of a variable which was assigned to, so it's counter
+            :param base_id: (str) base ID of a variable which was assigned to, so it's counter
             needs to be incremented.
-            :param dictionary
+            :param dictionary: (dict) assignment index.
             """
             if base_id in dictionary:
                 dictionary[base_id] += 1
@@ -136,11 +141,11 @@ class ConverterSSA(object):
 
 
         def update_dictionary(dictionary, base_id, new_val):
-            """Updates dictionary with the number of subsequent assignments per variable name.
+            """Updates dictionary of the number of assignments per variable name.
 
             :param base_id: base ID of a variable which was assigned to, so it's counter needs to be incremented.
-            :param dictionary:
-            :param new_val:
+            :param dictionary: (dict) assignment index.
+            :param new_val: (int) value to be inserted.
             """
             dictionary[base_id] = new_val
 
@@ -169,16 +174,16 @@ class ConverterSSA(object):
                  z'' = z  (meta)
 
             :param instr: if-instruction to be balanced.
-            :param dict_before_if: Dictionary containing number of previous assignments to variables before this if-instruction.
+            :param dict_before_if: Dictionary containing number of previous assignments to
+             variables before this if-instruction.
             :return: Nothing. Updates 'instr' in place.
             """
             s = StatsIf(instr)
             for v in sorted(s.vars_dict.keys()):
-                level = main_assign_nums[v]
+                level = assign_index[v]
                 balance_var_level(instr, v, level, dict_before_if)
 
 
-        # if_instr: InstrIf, varid: String, nl: Int, stats: StatsIf
         def balance_var_level(if_instr, base_id, level, dict_before_if):
             """Adds meta-instructions for blocks of IF which will introduce a "shared variable" in
             both blocks (similar concept to phi function in SSA form).
@@ -186,7 +191,8 @@ class ConverterSSA(object):
             :param if_instr:
             :param base_id: original name of the variable (without "time" markers).
             :param level: exact level of shared variable.
-            :param dict_before_if: Dictionary containing number of previous assignments to variables before this if-instruction.
+            :param dict_before_if: Dictionary containing number of previous assignments to
+             variables before this if-instruction.
             :return:
             """
             id_left = self.mark_var(base_id, level)
@@ -235,8 +241,19 @@ class ConverterSSA(object):
             return last_assigned
 
 
-        convert_instr_block(main_ib, main_assign_nums)
-        return  main_ib, main_assign_nums
+        for instr in main_ib.instructions:
+            if isinstance(instr, InstrAssert):
+                convert_instr_assert(instr, assign_index)
+            elif isinstance(instr, InstrAssign):
+                convert_instr_assign(instr, assign_index)
+            elif isinstance(instr, InstrIf):
+                convert_instr_if(instr, assign_index)
+            elif isinstance(instr, InstrHole):
+                raise Exception('Instruction holes are currently not supported!')
+            else:
+                raise Exception("Unsupported instruction of type {0} encountered during SSA conversion.".format(type(instr)))
+
+        return  main_ib, assign_index
 
 
     def update_expr(self, expr, dictionary):
@@ -248,26 +265,53 @@ class ConverterSSA(object):
         """
         if type(expr) is Var:
             expr.id = self.actual_var_id(expr.base_id, dictionary)
+
         elif type(expr) is ExprHole:
-            # Updating variables dictionary for a hole
-            for v in expr.hole_decl.vars:
-                var_type = expr.hole_decl.vars[v]
-                del expr.hole_decl.vars[v]
+            # Updating variables dictionary of a hole
+            new_dict = {}
+            old_dict = dict(expr.hole_decl.vars)
+            for v in old_dict:
+                tpe = expr.hole_decl.vars[v]
                 new_id = self.actual_var_id(Var.base_id(v), dictionary)
-                expr.hole_decl.vars[new_id] = var_type
+                new_dict[new_id] = tpe
+                del expr.hole_decl.vars[v]
+                expr.hole_decl.vars[new_id] = tpe
+            # expr.hole_decl.vars = new_dict  # set new variables dict
+
         elif type(expr) is Op:
             for e in expr.args:
                 self.update_expr(e, dictionary)
+
         else: # for constants
             pass
 
 
     def mark_var(self, base_id, num):
-        """Returns a new name of the variable with added 'num' markers at the end of the variable.
-        Apostrophe is not allowed in simple symbols in SMT-LIB 2.0, so variable names with ' must
-        be quoted symbols (marked with '|' at the ends).
+        if self.ssa_mark_indexed:
+            return self.mark_var_indexed(base_id, num)
+        else:
+            return self.mark_var_quoted(base_id, num)
+
+
+    def mark_var_quoted(self, base_id, num):
+        """Returns a new name of the variable with added 'num' markers at the end of
+         the variable. Apostrophe is not allowed in simple symbols in SMT-LIB 2.0,
+         so variable names with ' must be quoted symbols (marked with '|' at the ends).
         """
         name = base_id + (self.ssa_marker * num)
+        if (num > 0 and self.ssa_quote_marked_vars) or \
+           (num == 0 and self.ssa_quote_unmarked_vars):
+            return '|' + name + '|'
+        else:
+            return name
+
+
+    def mark_var_indexed(self, base_id, num):
+        """Returns a new name of the variable with added marker and then index at the
+         end of the variable. Apostrophe is not allowed in simple symbols in SMT-LIB 2.0,
+         so variables names must be quoted symbols (marked with '|' at the ends).
+        """
+        name = base_id + self.ssa_marker + str(num)
         if (num > 0 and self.ssa_quote_marked_vars) or \
            (num == 0 and self.ssa_quote_unmarked_vars):
             return '|' + name + '|'
@@ -350,9 +394,9 @@ def convert(ib, post, program_vars):
 
     ssa_conv = ConverterSSA()
     # Converting program's body.
-    src_ib_ssa, dict_assign_nums = ssa_conv.convert(ib.src, program_vars)
+    src_ib_ssa, assign_index = ssa_conv.convert(ib.src, program_vars)
     # Converting postcondition.
-    ssa_conv.update_expr(post, dict_assign_nums)
+    ssa_conv.update_expr(post, assign_index)
 
     utils.logger.debug('------------------------------')
     utils.logger.debug('SSA form:')

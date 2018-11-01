@@ -78,7 +78,7 @@ class InstrBlock(object):
                     if h.id == instr.id:
                         instr.hole_declaration = h
             elif instr.contains_blocks():
-                for ib in instr.instruction_blocks:
+                for ib in instr.get_instruction_blocks():
                     ib.update_holes(holes)
 
     def get_holes_definitions(self):
@@ -121,11 +121,13 @@ class Instruction(object):
     def __init__(self):
         self.is_meta = False
         self.in_type = ''
-        self.instruction_blocks = []
         self.is_hole = False
 
+    def get_instruction_blocks(self):  # to be overriden in subclasses
+        return []
+
     def contains_blocks(self):
-        return len(self.instruction_blocks) > 0
+        return len(self.get_instruction_blocks()) > 0
 
     def rename_var(self, old_id, new_id):  # to be overriden in subclasses
         raise Exception('Instruction.rename_var: method not implemented!')
@@ -228,7 +230,9 @@ class InstrWhile(Instruction):
         self.in_type = Instruction.WHILE
         self.condition = cond
         self.body = body
-        self.instruction_blocks = [body]
+
+    def get_instruction_blocks(self):
+        return [self.body]
 
     def __str__(self):
         res = 'while ( ' + str(self.condition) + ' )\n'
@@ -260,7 +264,7 @@ class InstrWhile(Instruction):
 
     def get_holes_definitions(self):
         res = self.condition.get_holes_definitions()
-        for ib in self.instruction_blocks:
+        for ib in self.get_instruction_blocks():
             res.extend(ib.get_holes_definitions())
         return res
 
@@ -274,7 +278,9 @@ class InstrIf(Instruction):
         self.condition = cond
         self.body = body
         self.orelse = orelse
-        self.instruction_blocks = [body, orelse]
+
+    def get_instruction_blocks(self):
+        return [self.body, self.orelse]
 
     def __str__(self):
         res = 'if ( ' + str(self.condition) + ' ) {\n'
@@ -316,7 +322,7 @@ class InstrIf(Instruction):
 
     def get_holes_definitions(self):
         res = self.condition.get_holes_definitions()
-        for ib in self.instruction_blocks:
+        for ib in self.get_instruction_blocks():
             res.extend(ib.get_holes_definitions())
         return res
 
@@ -500,7 +506,7 @@ class Op(Expression):
 class Var(Expression):
     ssa_marker = "'"
     """Marker used in SSA form for subsequent versions of variable. Change in your program, if you
-    don't use the default apostrophe."""
+    don't want to use the default apostrophe."""
 
     def __init__(self, id, sort='Int'):
         Expression.__init__(self)
@@ -538,7 +544,11 @@ class Var(Expression):
 
     @staticmethod
     def base_id(name):
-        return name.replace(Var.ssa_marker, "").replace('|', '')
+        k = name.find(Var.ssa_marker)
+        if k == -1:
+            return name
+        else:
+            return name[:k].replace('|', '')
 
     @staticmethod
     def change_base_name(old_name, new_base_name):
