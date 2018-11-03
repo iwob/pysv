@@ -87,6 +87,21 @@ else:
     y = 2
 x = x + 5
         """
+        exp_code = """
+x' = 0
+y = 0
+if x'<2:
+    x'' = 1
+    x''' = x'' + 1
+    x''''' = x''' (m)
+    y'' = y (m)
+else:
+    x'''' = 3
+    y' = 2
+    x''''' = x'''' (m)
+    y'' = y' (m)
+x'''''' = x''''' + 5
+"""
 
         post = 'x<2 and y<2'
         vars = ProgramVars({'x': 'Int'}, {'y': 'Int'})
@@ -195,6 +210,13 @@ while i < 6:
     i += 1
 i *= 2
 """
+        exp_code = """
+i'1 = 1
+while i'1 < 6:
+    print(i'1)
+    i'2 = i'1 + 1
+i'3 = i'2 * 2
+"""
         ib = ast_utils.py_to_interm_ib(code)
         ib = ssa_converter.convert_ib(ib, ProgramVars({"i":"Int"}), ssa_mark_indexed=False)
         ins = ib.src.instructions
@@ -206,11 +228,14 @@ i *= 2
         self.assertEquals(Op, type(ins[1].condition))
         self.assertEquals("<", ins[1].condition.id)
         self.assertEquals("|i'|", ins[1].condition.args[0].id)
+
         self.assertEquals(InstrCall, type(ins[1].body[0]))
         self.assertEquals("print", ins[1].body[0].id)
         self.assertEquals("|i'|", ins[1].body[0].args[0].id)
+
         self.assertEquals(InstrAssign, type(ins[1].body[1]))
         self.assertEquals("|i''|", ins[1].body[1].var.id)
+
         self.assertEquals(InstrAssign, type(ins[2]))
         self.assertEquals("|i'''|", ins[2].var.id)
         self.assertEquals("|i''|", ins[2].expr.args[0].id)
@@ -229,6 +254,27 @@ if i > 0:
             i -= 1
 i *= 2
 """
+        # Expected code:
+        exp_code = """
+i = 3
+if i > 0:
+    i'1 -= 1
+    if i'1 > 0:
+        i'2 -= 1
+        if i'2 > 0:
+            i'3 -= 1
+            i'4 = i'3 (m)
+        else:
+            i'4 = i'2 (m)
+        i'5 = i'4
+    else:
+        i'5 = i'1
+    i'6 = i'5
+else:
+    i'6 = i
+i *= 2
+"""
+
         ib = ast_utils.py_to_interm_ib(code)
         ib = ssa_converter.convert_ib(ib, ProgramVars(), ssa_mark_indexed=True)
         ins = ib.src.instructions
@@ -253,5 +299,15 @@ i *= 2
         self.assertEquals("|i'2|", if3.condition.args[0].id)
         self.assertEquals(InstrAssign, type(if3.body[0]))
         self.assertEquals("|i'3|", if3.body[0].var.id)
+        self.assertEquals(InstrAssign, type(if3.body[1])) # meta 1
+        self.assertEquals(True, if3.body[1].is_meta)  # meta
+        self.assertEquals("|i'4|", if3.body[1].var.id) # meta
+        self.assertEquals("|i'3|", if3.body[1].expr.id) # meta
+        self.assertEquals(InstrAssign, type(if3.body[1]))  # meta 2
+        self.assertEquals(True, if3.orelse[0].is_meta)  # meta
+        self.assertEquals("|i'4|", if3.orelse[0].var.id)  # meta
+        self.assertEquals("|i'2|", if3.orelse[0].expr.id)  # meta
+
+
 
         #TODO: Add tests on the meta instructions and "i *= 2"

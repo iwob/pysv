@@ -185,11 +185,13 @@ class InstrAssert(Instruction):
 
 class InstrAssign(Instruction):
     # var: Variable, expr: Expression
-    def __init__(self, var, expr):
+    def __init__(self, var, expr, is_meta=False):
         Instruction.__init__(self)
+        assert isinstance(var, Var)
         self.in_type = Instruction.ASSIGN
         self.var = var
         self.expr = expr
+        self.is_meta = is_meta
 
     def __str__(self):
         res = self.var.id + ' = ' + str(self.expr)
