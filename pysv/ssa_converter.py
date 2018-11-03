@@ -73,146 +73,88 @@ class ConverterSSA(object):
         main_ib = copy.deepcopy(main_ib_0)
         assign_index = dict(assign_index)
 
-
-        def convert_instr_assert(instr, parent_assign_index):
-            assert isinstance(instr, InstrAssert)
-            # Converting expression
-            self.update_expr(instr.expr, parent_assign_index)
-            return instr, parent_assign_index
-
-
-        def convert_instr_call(instr, parent_assign_index):
-            assert isinstance(instr, InstrCall)
-            # Converting expression
-            for a in instr.args:
-                assert isinstance(a, Expression)
-                self.update_expr(a, parent_assign_index)
-            return instr, parent_assign_index
-
-
-        def convert_instr_assign(instr, parent_assign_index):
-            assert isinstance(instr, InstrAssign)
-            # Converting expression
-            self.update_expr(instr.expr, parent_assign_index)
-
-            # Converting variable
-            x = instr.var.base_id
-            self.inc_assign_num(x, parent_assign_index)  # updating global variable dict
-            if parent_assign_index[x] > 1: # not the first (initial) assignment to a variable
-                new_id = self.mark_var(x, parent_assign_index[x])
-                instr.var.id = new_id
-                #TODO: update references also in block containing this block
-                #self.update_future_references(ib, x, new_id, instr_num+1)
-            return instr, parent_assign_index
-
-
-        def convert_instr_if(instr, parent_assign_index):
-            assert isinstance(instr, InstrIf)
-            parent_assign_index = parent_assign_index.copy()
-            index_before_if = parent_assign_index.copy()
-
-            # Converting condition
-            self.update_expr(instr.condition, parent_assign_index)
-
-            # Converting both body blocks of IF. Copy of parent_assign_nums dict will be made inside.
-            ib, body_assign_index = self.convert_for_index(instr.body, parent_assign_index)
-            instr.body = ib
-            ib, orelse_assign_index = self.convert_for_index(instr.orelse, body_assign_index)
-            instr.orelse = ib
-
-            # Balancing (leveling) of IF branches.
-            self.balance_var_level_if(instr, body_assign_index, orelse_assign_index, index_before_if)
-
-            # Updating global assignment index.
-            parent_assign_index.update(orelse_assign_index)
-            return instr, parent_assign_index
-
-
-        def convert_instr_while(instr, parent_assign_index):
-            # global assign_index
-            assert isinstance(instr, InstrWhile)
-
-            # Converting condition
-            self.update_expr(instr.condition, parent_assign_index)
-
-            ib, index = self.convert_for_index(instr.body, parent_assign_index)
-            parent_assign_index.update(index)
-            instr.body = ib
-            return instr, parent_assign_index
-
-
-        def balance_var_level(if_instr, base_id, level, dict_before_if):
-            """Adds meta-instructions for blocks of IF which will introduce a "shared variable" in
-            both blocks (similar concept to phi function in SSA form).
-
-            :param if_instr:
-            :param base_id: original name of the variable (without "time" markers).
-            :param level: exact level of shared variable.
-            :param dict_before_if: Dictionary containing number of previous assignments to
-             variables before this if-instruction.
-            :return:
-            """
-            id_left = self.mark_var(base_id, level)
-
-            meta1 = get_meta_instr(if_instr.body, base_id, Var(id_left), dict_before_if)
-            if_instr.body.append(meta1)
-
-            meta2 = get_meta_instr(if_instr.orelse, base_id, Var(id_left), dict_before_if)
-            if_instr.orelse.append(meta2)
-
-
-        def get_meta_instr(ib, base_id, var_L, dict_before_if):
-            """It is assumed here that ib was already converted to SSA form.
-
-            :param ib: Instruction block.
-            :param base_id: Original name of the variable (without "time" markers).
-            :param var_L: Variable on the left side of the assignment.
-            :param dict_before_if: Dictionary containing number of previous assignments to variables before this if-instruction.
-            :return: Additional instruction which assigns to var_L last var with a given base name
-            from this block.
-            """
-            last = get_last_id_of_var(ib, base_id, dict_before_if)
-            id_R = self.mark_var(base_id, last.count("'"))
-            var_R = Var(id_R)
-            meta_in = InstrAssign(var_L, var_R)
-            meta_in.set_meta(True)
-            return meta_in
-
-
-        def get_last_id_of_var(ib, base_id, dict_before_if):
-            """Returns the last id of a variable (the one with the most time markers).
-
-            :param ib: Instruction block.
-            :param base_id: Original name of the variable (without "time" markers).
-            :param dict_before_if: Dictionary containing number of previous assignments to variables before this if-instruction.
-            :return:
-            """
-            last_assigned = self.actual_var_id(base_id, dict_before_if)  # last assigned id of a given variable.
-            # FIXME: if variable was marked before IF and was not present in the IF's body, then this will produce an error of using old, initial version of the variable...
-            for instr in ib.instructions:
-                if (instr.in_type == Instruction.ASSIGN and
-                    instr.var.base_id == base_id):
-                    last_assigned = instr.var.id
-            return last_assigned
-
-
         for instr in main_ib.instructions:
             if isinstance(instr, InstrAssert):
-                _, assign_index = convert_instr_assert(instr, assign_index)
+                _, assign_index = self.convert_instr_assert(instr, assign_index)
             elif isinstance(instr, InstrAssign):
-                _, assign_index = convert_instr_assign(instr, assign_index)
+                _, assign_index = self.convert_instr_assign(instr, assign_index)
             elif isinstance(instr, InstrIf):
-                _, assign_index = convert_instr_if(instr, assign_index)
+                _, assign_index = self.convert_instr_if(instr, assign_index)
             elif isinstance(instr, InstrWhile):
-                _, assign_index = convert_instr_while(instr, assign_index)
+                _, assign_index = self.convert_instr_while(instr, assign_index)
             elif isinstance(instr, InstrCall):
-                _, assign_index = convert_instr_call(instr, assign_index)
+                _, assign_index = self.convert_instr_call(instr, assign_index)
             elif isinstance(instr, InstrHole):
                 raise Exception('Instruction holes are currently not supported!')
             else:
                 raise Exception("Unsupported instruction of type {0} encountered during SSA conversion.".format(type(instr)))
 
         return main_ib, assign_index
+
+
+    def convert_instr_assert(self, instr, parent_assign_index):
+        assert isinstance(instr, InstrAssert)
+        # Converting expression
+        self.update_expr(instr.expr, parent_assign_index)
+        return instr, parent_assign_index
+
+
+    def convert_instr_call(self, instr, parent_assign_index):
+        assert isinstance(instr, InstrCall)
+        # Converting expression
+        for a in instr.args:
+            assert isinstance(a, Expression)
+            self.update_expr(a, parent_assign_index)
+        return instr, parent_assign_index
+
+
+    def convert_instr_assign(self, instr, parent_assign_index):
+        assert isinstance(instr, InstrAssign)
+        # Converting expression
+        self.update_expr(instr.expr, parent_assign_index)
+
+        # Converting variable
+        x = instr.var.base_id
+        self.inc_assign_num(x, parent_assign_index)  # updating global variable dict
+        if parent_assign_index[x] > 1:  # not the first (initial) assignment to a variable
+            new_id = self.mark_var(x, parent_assign_index[x])
+            instr.var.id = new_id
+        return instr, parent_assign_index
+
+
+    def convert_instr_if(self, instr, parent_assign_index):
+        assert isinstance(instr, InstrIf)
+        parent_assign_index = parent_assign_index.copy()
+        index_before_if = parent_assign_index.copy()
+
+        # Converting condition
+        self.update_expr(instr.condition, parent_assign_index)
+
+        # Converting both body blocks of IF. Copy of parent_assign_nums dict will be made inside.
+        ib, body_assign_index = self.convert_for_index(instr.body, parent_assign_index)
+        instr.body = ib
+        ib, orelse_assign_index = self.convert_for_index(instr.orelse, body_assign_index)
+        instr.orelse = ib
+
+        # Balancing (leveling) of IF branches.
+        self.balance_var_level_if(instr, body_assign_index, orelse_assign_index, index_before_if)
+
+        # Updating global assignment index.
+        parent_assign_index.update(orelse_assign_index)
+        return instr, parent_assign_index
+
+
+    def convert_instr_while(self, instr, parent_assign_index):
+        # global assign_index
+        assert isinstance(instr, InstrWhile)
+
+        # Converting condition
+        self.update_expr(instr.condition, parent_assign_index)
+
+        ib, index = self.convert_for_index(instr.body, parent_assign_index)
+        parent_assign_index.update(index)
+        instr.body = ib
+        return instr, parent_assign_index
 
 
     def inc_assign_num(self, base_id, dictionary):
@@ -348,11 +290,6 @@ class ConverterSSA(object):
             instr.body.instructions.append(a1)
             instr.orelse.instructions.append(a2)
 
-        # s = StatsIf(instr)
-        # for v in sorted(s.vars_dict.keys()):
-        #     level = assign_index[v]
-        #     balance_var_level(instr, v, level, dict_before_if)
-
 
     def update_expr(self, expr, dictionary):
         """Updates all variables in the expression to their SSA-form according to a dictionary with number of previous assignments of each variable.
@@ -439,56 +376,6 @@ class ConverterSSA(object):
         else:
             return base_id
 
-
-
-
-
-class StatsIf(object):
-
-    def __init__(self, if_instr):
-        self.body = StatsBlock(if_instr.body)
-        self.orelse = StatsBlock(if_instr.orelse)
-        self.vars_dict = self.body.vars_dict.copy()
-        self.vars_dict.update(self.orelse.vars_dict)
-
-
-
-class StatsBlock(object):
-
-    def __init__(self, ib):
-        self.base_var_ids = []
-        self.assigned_unique_vars = []
-        self.assigned_vars = []
-        self.vars_dict = {}
-
-        for instr in ib.instructions:
-            if instr.in_type is Instruction.IF:
-                pass # TODO: handle ifs in instruction blocks
-            elif instr.in_type is Instruction.ASSIGN:
-                self.add_var_to_list(instr.var)
-                self.update_vars_dict(instr.var)
-
-    def add_var_to_list(self, var):
-        for v in self.assigned_vars:
-            if var.id == v.id:
-                return
-        self.assigned_vars.append(var)
-        self.base_var_ids.append(var.base_id)
-
-    def update_vars_dict(self, var):
-        base_id = var.base_id
-        if base_id in self.vars_dict:
-            self.vars_dict[base_id] += 1
-        else:
-            self.vars_dict[base_id] = 1
-
-    # def base(self, var_id):
-    #     return var_id.replace("'", "")
-
-    def update_unique_vars(self, var_list):
-        for uv in var_list:
-            if uv not in self.assigned_vars:
-                self.assigned_vars.append(uv)
 
 
 
