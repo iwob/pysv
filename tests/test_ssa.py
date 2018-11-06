@@ -28,7 +28,7 @@ class TestsSSA(unittest.TestCase):
         self.assertEquals(3, ib2.src.size())
         self.assertEquals("z", post2.args[0].id)
 
-        ib2, post2 = ssa_converter.convert(ib2, post2, vars)
+        ib2, post2 = ssa_converter.convert(ib2, post2, vars, ssa_mark_indexed=False)
         self.assertFalse(ib.src.equals(ib2))
         # -----------------------------------
         self.assertEquals("|x'|", ib2.src.instructions[0].var.id)
@@ -258,7 +258,7 @@ i *= 2
         exp_code = """
 i = 3
 if i > 0:
-    i'1 -= 1
+    i'1 = i - 1
     if i'1 > 0:
         i'2 -= 1
         if i'2 > 0:
@@ -272,7 +272,7 @@ if i > 0:
     i'6 = i'5
 else:
     i'6 = i
-i *= 2
+i'7 = i'6 * 2
 """
 
         ib = ast_utils.py_to_interm_ib(code)
@@ -287,27 +287,37 @@ i *= 2
         self.assertEquals("i", if1.condition.args[0].id)
         self.assertEquals(InstrAssign, type(if1.body[0]))
         self.assertEquals("|i'1|", if1.body[0].var.id)
+        self.assertEquals("i", if1.body[0].expr.args[0].id)
+        self.assertEquals("|i'6|", if1.body[2].var.id)  # meta
+        self.assertEquals("|i'5|", if1.body[2].expr.id) # meta
+        self.assertEquals("|i'6|", if1.orelse[0].var.id)  # meta
+        self.assertEquals("i", if1.orelse[0].expr.id) # meta
 
         if2 = ins[1].body[1]
         self.assertEquals(InstrIf, type(if2))
         self.assertEquals("|i'1|", if2.condition.args[0].id)
         self.assertEquals(InstrAssign, type(if2.body[0]))
         self.assertEquals("|i'2|", if2.body[0].var.id)
+        self.assertEquals("|i'5|", if2.body[2].var.id)  # meta
+        self.assertEquals("|i'4|", if2.body[2].expr.id)  # meta
+        self.assertEquals("|i'5|", if2.orelse[0].var.id)  # meta
+        self.assertEquals("|i'1|", if2.orelse[0].expr.id)  # meta
 
         if3 = ins[1].body[1].body[1]
         self.assertEquals(InstrIf, type(if3))
         self.assertEquals("|i'2|", if3.condition.args[0].id)
         self.assertEquals(InstrAssign, type(if3.body[0]))
+        self.assertEquals(False, if3.body[0].is_meta)
         self.assertEquals("|i'3|", if3.body[0].var.id)
-        self.assertEquals(InstrAssign, type(if3.body[1])) # meta 1
         self.assertEquals(True, if3.body[1].is_meta)  # meta
-        self.assertEquals("|i'4|", if3.body[1].var.id) # meta
-        self.assertEquals("|i'3|", if3.body[1].expr.id) # meta
-        self.assertEquals(InstrAssign, type(if3.body[1]))  # meta 2
+        self.assertEquals("|i'4|", if3.body[1].var.id)  # meta
+        self.assertEquals("|i'3|", if3.body[1].expr.id)  # meta
         self.assertEquals(True, if3.orelse[0].is_meta)  # meta
         self.assertEquals("|i'4|", if3.orelse[0].var.id)  # meta
         self.assertEquals("|i'2|", if3.orelse[0].expr.id)  # meta
 
-
-
-        #TODO: Add tests on the meta instructions and "i *= 2"
+        # Last assignment
+        last = ins[2]
+        self.assertEquals(InstrAssign, type(last))
+        self.assertEquals("|i'7|", last.var.id)
+        self.assertEquals("|i'6|", last.expr.args[0].id)

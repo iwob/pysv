@@ -370,7 +370,7 @@ class InstrHole(Instruction):
 class InstrCall(Instruction):
     """Represents a call to a function. This class differs from Op in that it may
     potentially produce side effects, and it is not a standard operator in Python.
-    For example a print function will be represented as a call."""
+    For example, a print function would be represented as a call."""
 
     def __init__(self, fun_name, args=None):
         """

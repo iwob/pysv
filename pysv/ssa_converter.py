@@ -25,7 +25,7 @@ class ConverterSSA(object):
      (default=True)
     """
 
-    def __init__(self, ssa_marker = "'", ssa_quote_marked_vars = True, ssa_mark_indexed=False):
+    def __init__(self, ssa_marker = "'", ssa_quote_marked_vars = True, ssa_mark_indexed=True):
         self.ssa_marker = ssa_marker
         self.ssa_quote_marked_vars = ssa_quote_marked_vars
         self.ssa_mark_indexed = ssa_mark_indexed
@@ -145,7 +145,6 @@ class ConverterSSA(object):
 
 
     def convert_instr_while(self, instr, parent_assign_index):
-        # global assign_index
         assert isinstance(instr, InstrWhile)
 
         # Converting condition
@@ -380,7 +379,7 @@ class ConverterSSA(object):
 
 
 
-def convert(ib, post, program_vars, ssa_quote_marked_vars = True, ssa_mark_indexed = False):
+def convert(ib, post, program_vars, ssa_quote_marked_vars = True, ssa_mark_indexed = True):
     """Returns an instruction block and postcondition converted to SSA (Single
     Static Assignment) form. This function acts as a wrapper for ConverterSSA object.
 
@@ -409,7 +408,7 @@ def convert(ib, post, program_vars, ssa_quote_marked_vars = True, ssa_mark_index
 
 
 
-def convert_ib(ib, program_vars, ssa_quote_marked_vars = True, ssa_mark_indexed = False):
+def convert_ib(ib, program_vars, ssa_quote_marked_vars = True, ssa_mark_indexed = True):
     """Returns an instruction block converted to SSA (Single Static
      Assignment) form. This function acts as a wrapper for ConverterSSA object.
 
