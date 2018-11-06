@@ -1,7 +1,7 @@
 import unittest
 from pysv.interm import *
 from pysv.contract import *
-from pysv import ast_utils, ssa_converter
+from pysv import ast_utils
 
 
 class TestsInterm(unittest.TestCase):

@@ -54,7 +54,7 @@ class InstrBlock(object):
 
     def equals(self, other):
         """Checks, if provided instruction block has the same structure and instructions as this one."""
-        if type(other) != InstrBlock:
+        if not isinstance(other, InstrBlock):
             return False
         n = len(self.instructions)
         m = len(other.instructions)
@@ -173,7 +173,7 @@ class InstrAssert(Instruction):
         return res
 
     def equals(self, other):
-        if type(other) == InstrAssert:
+        if isinstance(other, InstrAssert):
             return self.expr.equals(other.expr)
         else:
             return False
@@ -214,7 +214,7 @@ class InstrAssign(Instruction):
         return res
 
     def equals(self, other):
-        if type(other) == InstrAssign:
+        if isinstance(other, InstrAssign):
             return self.var.equals(other.var) and \
                    self.expr.equals(other.expr)
         else:
@@ -258,11 +258,11 @@ class InstrWhile(Instruction):
         return res
 
     def equals(self, other):
-        if type(other) != InstrWhile:
-            return False
-        else:
+        if isinstance(other, InstrWhile):
             return self.condition.equals(other.condition) and \
                    self.body.equals(other.body)
+        else:
+            return False
 
     def get_holes_definitions(self):
         res = self.condition.get_holes_definitions()
@@ -278,6 +278,10 @@ class InstrIf(Instruction):
         Instruction.__init__(self)
         if orelse is None:
             orelse = InstrBlock([])
+        if isinstance(body, list):
+            body = InstrBlock(body)
+        if isinstance(orelse, list):
+            orelse = InstrBlock(orelse)
         self.in_type = Instruction.IF
         self.condition = cond
         self.body = body
@@ -317,7 +321,7 @@ class InstrIf(Instruction):
         return res
 
     def equals(self, other):
-        if type(other) == InstrIf:
+        if isinstance(other, InstrIf):
             return self.condition.equals(other.condition) and \
                    self.body.equals(other.body) and \
                    self.orelse.equals(other.orelse)
@@ -354,7 +358,7 @@ class InstrHole(Instruction):
                 break
 
     def equals(self, other):
-        if type(other) == InstrHole:
+        if isinstance(other, InstrHole):
             return self.id == other.id
         else:
             return False
@@ -403,7 +407,7 @@ class InstrCall(Instruction):
         return res
 
     def equals(self, other):
-        if type(other) == InstrCall:
+        if isinstance(other, InstrCall):
             return self.id == other.id and \
                    len(self.args) == len(other.args) and \
                    all(self.args[i].equals(other.args[i]) for i in range(0, len(self.args)))
@@ -499,12 +503,13 @@ class Op(Expression):
         return res
 
     def equals(self, other):
-        if type(other) == Expression:
+        if isinstance(other, Op):
             return self.id == other.id and \
                    len(self.args) == len(other.args) and \
                    all(self.args[i].equals(other.args[i]) for i in range(0, len(self.args)))
         else:
             return False
+
 
 
 class Var(Expression):
@@ -541,7 +546,7 @@ class Var(Expression):
         return [self.id]
 
     def equals(self, other):
-        if type(other) == Var:
+        if isinstance(other, Var):
             return self.id == other.id
         else:
             return False
@@ -572,7 +577,7 @@ class ConstInt(Expression):
         return str(self.value)
 
     def equals(self, other):
-        if type(other) == ConstInt:
+        if isinstance(other, ConstInt):
             return self.value == other.value
         else:
             return False
@@ -593,7 +598,7 @@ class ConstBool(Expression):
             return 'false'
 
     def equals(self, other):
-        if type(other) == ConstBool:
+        if isinstance(other, ConstBool):
             return self.value == other.value
         else:
             return False
@@ -615,7 +620,7 @@ class ExprHole(Expression):
         return '?' + self.hole_decl.id + '?'
 
     def equals(self, other):
-        if type(other) == ExprHole:
+        if isinstance(other, ExprHole):
             return self.hole_decl.id == other.hole_decl.id
         else:
             return False
