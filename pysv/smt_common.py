@@ -1,6 +1,8 @@
 from pysv import ast_utils
 from pysv import ssa_converter
 from pysv import utils
+from pysv import loops
+from pysv import interm
 from pysv.smt2 import ProgramSmt2
 
 
@@ -47,6 +49,9 @@ def convert_py_to_smt2(code, code_pre, code_post, program_vars, env, holes_decls
     # Python source code --> internal abstract program representation.
     ib, pre, post = ast_utils.process_source_code(code, code_pre, code_post, holes_decls)
     utils.logger.debug('\n\n******** PROGRAM REPR ********:\n' + str(ib))
+
+    # Handling of loops
+    ib = interm.ProgramInterm(loops.unroll_loops(ib.src, n=env.loop_unrolling_level))
 
     # Abstract program representation --> abstract program representation in SSA form.
     if env.ssa_enabled:

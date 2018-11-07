@@ -198,6 +198,7 @@ class Options(object):
         parser.add_argument("--free_vars", type=str, nargs='*', default=[],
                             help="List of free variables present in the programs, provided as only names. Value of those variables will be determined by solver during verification or synthesis. Free variables should be also properly declared as local variables. (default: [])")
         parser.add_argument("--logic", type=str, default="NIA")
+        parser.add_argument("--loop_unrolling_level", type=int, default=5, help="Number of nested if-expressions loops will be unrolled into.")
         parser.add_argument("--name_all_assertions", type=int, choices=[0, 1], default=True)
         parser.add_argument("--name_struct_assertions", type=int, choices=[0, 1], default=False)
         parser.add_argument("--only_script", action="store_true",

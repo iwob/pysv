@@ -134,7 +134,7 @@ def print_ast(tree):
 def process_source_code(code, code_pre, code_post, holes_decls = None):
     pre  = py_to_interm_expr(code_pre)
     post = py_to_interm_expr(code_post)
-    ib   = py_to_interm_ib(code, holes_decls)
+    ib   = py_to_interm_ib(code, holes_decls)  #TODO: change py_to_interm_ib to really return InstrBlock
     return ib, pre, post
 
 

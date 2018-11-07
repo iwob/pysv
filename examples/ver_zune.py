@@ -14,15 +14,17 @@ sys.path.insert(1, os.path.abspath('..'))
 #---------------------------------------------------------------------------------------------------
 
 from pysv import smt_verifier
+from pysv import utils
 from pysv import contract
+
 
 """
 ORIGINAL ZUNE BUG CODE:
-ORIGINYEAR = 1980   (1980 was a leap year)
-input: days (number of days since ORIGINYEAR)
+ORIGIN_YEAR = 1980   (1980 was a leap year)
+input: days (number of days since ORIGIN_YEAR)
 -----------------------------------
 
-year = ORIGINYEAR;
+year = ORIGIN_YEAR;
 while (days > 365)
 {
     if (IsLeapYear(year))
@@ -42,21 +44,55 @@ while (days > 365)
 }
 """
 
+
+
+
 # Only one leap
-zune_simplified = """
-#year = 1980
-#if days > 365: # handled by precondition
-days2 = days
-year2 = year
-if year % 4 == 0:
-    if days > 366:
-        days2 = days - 366
-        year2 = year + 1
-    # lack of else statement
-else:
-    days2 = days - 365
-    year2 = year + 1
+zune_while = """
+# days <- input
+year = 1980
+while days > 365:
+    if year % 4 == 0:
+        if days > 366:
+            days -= 366
+            year += 1
+        # lack of else statement - not ending loop for 366'th day in a leap year
+    else:
+        days -= 365
+        year += 1
 """
+pre = "days > 0"
+t1 = (["days == 360"], ["year == 1980", "days == 360"]) #366
+t2 = (["days == 367"], ["year == 1981", "days == 1"])
+post = contract.formula_test_cases_py([t1, t2])
+
+program_vars = contract.ProgramVars({"days":"Int"}, {"year":"Int"})
+
+env = utils.Options("--loop_unrolling_level 2")
+
+res = smt_verifier.verify(zune_while, pre, post, program_vars, env)
+# Printing result
+print('\n')
+print('----------------------------------------------')
+print('                SOLVER RESULT                 ')
+print('----------------------------------------------')
+if res.decision == 'unsat':
+    print('Counterexample not found! Program is correct.')
+elif res.decision == 'sat':
+    print(res.witness)
+    print('Counterexample found! Program is incorrect.')
+print('----------------------------------------------\n\n')
+
+
+
+
+
+
+
+
+
+
+
 input_vars = contract.ProgramVars({"days" : 'Int', "year" : 'Int'})
 pre = "days > 365 and year >= 1980"
 # For this postcondition program doesn't meet the specification because the postcondition

@@ -21,7 +21,7 @@ def _verify_universal(smtlib_constr, code, code_pre, code_post, program_vars, en
 
 
 
-def verify(code, code_pre, code_post, program_vars, env, assertions = None):
+def verify(code, code_pre, code_post, program_vars, env = None, assertions = None):
     """This function utilizes external solver and runs it for the generated SMT-LIB 2.0 script containing
     constraints. Program is checked for correctness with respect to delivered pre- and
     post-conditions.
@@ -35,13 +35,15 @@ def verify(code, code_pre, code_post, program_vars, env, assertions = None):
     :return: (SolverResult) Interpreted result of the solver.
     """
     if assertions is None:
-        assertions = env.assertions
+        assertions = _get_assertions(env)
+    if env is None:
+        env = utils.Options({})
     smtlib_constr = VerificationConstr(env, assertions)
     return _verify_universal(smtlib_constr, code, code_pre, code_post, program_vars, env)
 
 
 
-def find_example(code, code_pre, code_post, program_vars, env, assertions = None):
+def find_example(code, code_pre, code_post, program_vars, env = None, assertions = None):
     """This function utilizes external solver and runs it for the generated SMT-LIB 2.0 script containing
     constraints. Solver will search for an example of correct working of the program with respect to delivered
     pre- and post-conditions.
@@ -55,17 +57,28 @@ def find_example(code, code_pre, code_post, program_vars, env, assertions = None
     :return: (SolverResult) Interpreted result of the solver.
     """
     if assertions is None:
-        assertions = env.assertions
+        assertions = _get_assertions(env)
+    if env is None:
+        env = utils.Options({})
     smtlib_constr = FindExampleConstr(env, assertions)
     return _verify_universal(smtlib_constr, code, code_pre, code_post, program_vars, env)
 
 
 
-
+def _get_assertions(env):
+    """Extracts assertions from the environment (Options) or returns an empty
+     list otherwise."""
+    if env.options["assertions"] is not None:
+        return env.assertions
+    else:
+        return []
 
 
 class VerificationResult(solvers.SolverResult):
-    """VerificationResult contains apart from normal solver result also certain information typical for the verification scenario, e.g. witness (part of the model for input variables, which allows to reproduce erroneous behavior).
+    """VerificationResult contains apart from normal solver result also
+     certain information typical for the verification scenario, e.g. witness
+     (part of the model for input variables, which allows to reproduce
+     erroneous behavior).
     """
     def __init__(self, solver_result, original_code, program_vars, env):
         solvers.SolverResult.__init__(self, solver_result, env)

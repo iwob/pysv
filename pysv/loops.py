@@ -2,6 +2,12 @@ import copy
 from .interm import *
 
 
+def unroll_loops_program(program, n=5):
+    """Returns program with all while instructions unrolled."""
+    assert isinstance(program, ProgramInterm)
+    return ProgramInterm(unroll_loops(program.src, n=n))
+
+
 def unroll_loops(ib, n=5):
     """Returns instruction block with all while instructions unrolled."""
     assert isinstance(ib, InstrBlock)
@@ -20,9 +26,9 @@ def unroll_while_instr(while_instr, n=5):
     while_cond = copy.deepcopy(while_instr.condition)
     while_body = copy.deepcopy(while_instr.body)
     if n == 1:
-        body.append(while_body)
+        body.extend(while_body.instructions)
         orelse.append(InstrAssert(Op("not", [while_cond])))
     else:
-        body.append(while_body)
-        body.append(unroll_while_instr(while_cond, n=n-1))
+        body.extend(while_body.instructions)
+        body.append(unroll_while_instr(while_instr, n=n-1))
     return InstrIf(while_cond, body, orelse)

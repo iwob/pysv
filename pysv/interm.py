@@ -812,6 +812,7 @@ class InstructionBlockTranslator(object):
         self.reset()
         return self.produce_constr_lists_internal(ib)
 
+
     def produce_constr_lists_internal(self, ib):
         """Returns a tuple of two lists: the first contains only constraints, and the second contains also comments.
         """
@@ -824,6 +825,7 @@ class InstructionBlockTranslator(object):
                 constr.append(c)
                 comm.append(c)
         return constr, comm
+
 
     def produce_constraints_instr(self, instr):
         """Generates constraints for the given instruction.
@@ -846,8 +848,12 @@ class InstructionBlockTranslator(object):
             # Expression instruction in most cases does not change outcome of the program
             # (exception: calling a function which changes state).
             return ['']  #TODO: perhaps ['true'] should be returned for some constraints to be valid...
+        elif isinstance(instr, InstrAssert):
+            expr = self.expr_translator.apply(instr.expr)
+            return [expr]
         else:
             raise Exception(str(t)+': instruction not supported!')
+
 
     def produce_constraints_assign(self, instr):
         L = instr.var.id
@@ -869,6 +875,7 @@ class InstructionBlockTranslator(object):
         F2 = impl2
         #F3 = '(or ' + cond + ' (not ' + cond + '))'  # at least one branch must be true in IF THEN ELSE
         return [F1, F2]
+
 
     def produce_constraints_while(self, instr):
         cond = self.expr_translator.apply(instr.condition)
