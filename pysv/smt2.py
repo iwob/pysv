@@ -2,8 +2,7 @@ from pysv import utils
 
 
 class ProgramSmt2(object):
-    """SMT-LIB program represented in this class as a text and a list of constraints
-    contained in that text."""
+    """SMT-LIB program represented as a text and a list of constraints."""
 
     def __init__(self, src, constr_list = None, let_declarations = None):
         assert (src.strip()[0] == '(' and src.strip()[-1] == ')') or len(src.split()) == 1,\

@@ -78,8 +78,12 @@ class VerificationConstr(SMTLIBConstraints):
         else:
             return text
 
+
     def get_flat_verification_formula(self, ib, pre, post):
-        """Returns asserted verification formula. This formula spans multiple assertions: assert(PRE); assert(x) for x in PROGRAM; assert(not(POST)). In other words, standard implication-based verification formula was transformed into set of formulas connected by conjunctions.
+        """Returns asserted verification formula. This formula spans multiple assertions:
+         assert(PRE); assert(x) for x in PROGRAM; assert(not(POST)). In other words,
+         standard implication-based verification formula was transformed into a set of formulas
+         connected by conjunctions.
 
         :param ib: (ProgramSmt2) program in SMT2 representation.
         :param pre: (ProgramSmt2) precondition in SMT2 representation.
