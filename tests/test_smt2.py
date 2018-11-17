@@ -8,13 +8,6 @@ class TestsCodeSMTLIB(unittest.TestCase):
         text = "(assert (= x 5))"
         # tree = CodeSMTLIB.from_str(text)
 
-    def test_constr_list_from_smt2_code(self):
-        self.assertEquals([''], constr_list_from_smt2_code(""))
-
-        code = "(= x 5)\n(= y x)\n(= z y)"
-        constr = constr_list_from_smt2_code(code)
-        self.assertEquals(["(= x 5)", "(= y x)", "(= z y)"], constr)
-
 
     def test_TreeSmt2_from_wlist_only_terminal(self):
         string = "true"

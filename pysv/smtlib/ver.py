@@ -1,5 +1,6 @@
 from pysv.smtlib.common import *
 from pysv import symb_logic
+from pysv import smt2
 
 
 class VerificationConstr(SMTLIBConstraints):
@@ -47,7 +48,7 @@ class VerificationConstr(SMTLIBConstraints):
         :param post: (ProgramSmt2) postcondition in SMT2 representation.
         :return: (str) Final text of the standard verification formula.
         """
-        PRE = pre.src
+        PRE = pre.get_src()
         PROGRAM = utils.conjunct_constrs_smt2(ib.constr)
         POST = self.get_postcond_core(post)
         text = self.get_std_verification_formula_text(PRE, PROGRAM, POST)
@@ -81,8 +82,8 @@ class VerificationConstr(SMTLIBConstraints):
 
     def get_flat_verification_formula(self, ib, pre, post):
         """Returns asserted verification formula. This formula spans multiple assertions:
-         assert(PRE); assert(x) for x in PROGRAM; assert(not(POST)). In other words,
-         standard implication-based verification formula was transformed into a set of formulas
+         assert(PRE); assert(PROGRAM); assert(not(POST)). In other words, standard
+         implication-based verification formula was transformed into a set of formulas
          connected by conjunctions.
 
         :param ib: (ProgramSmt2) program in SMT2 representation.
@@ -90,8 +91,8 @@ class VerificationConstr(SMTLIBConstraints):
         :param post: (ProgramSmt2) postcondition in SMT2 representation.
         :return: (str) Final text of the standard verification formula.
         """
-        PRE = self.assertify(pre.src)
-        PROGRAM = self.get_text_program_assertions(ib.constr)
+        PRE = self.assertify(pre.get_src())
+        PROGRAM = self.get_text_program_assertions(ib)
         POST = self.get_postcond_whole(post)
 
         text = '; PRECONDITION\n'
@@ -113,7 +114,7 @@ class VerificationConstr(SMTLIBConstraints):
                 self.annotate_cnf_tree(t)
             return t.str_smt2()
         else:
-            return post.src
+            return post.get_src()
 
 
     def get_postcond_whole(self, post):
@@ -160,7 +161,9 @@ class VerificationConstr(SMTLIBConstraints):
         return self.assertify(body_text, 'VER_FORMULA')
 
 
-    def get_text_program_assertions(self, program_constr):
+    def get_text_program_assertions(self, program):
+        assert isinstance(program, smt2.ProgramSmt2)
+        program_constr = program.constr
         text = ''
         for c in program_constr:
             text += self.assertify(c) + '\n'

@@ -226,7 +226,7 @@ class SynthesisConstrTestCases(SynthesisConstr):
                 if new_name != v:
                     tc_post_pure.rename_var(v, new_name)
         tc_post = self.tc_rename_vars_instructions(tc_post_pure, all_vars, testNum, exclude)
-        tc_post = tc_post.to_smt2(self.env).src
+        tc_post = tc_post.to_smt2(self.env).get_src()
         return tc_post
 
 

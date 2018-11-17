@@ -2,34 +2,32 @@ from pysv import utils
 
 
 class ProgramSmt2(object):
-    """SMT-LIB program represented as a text and a list of constraints."""
+    """SMT-LIB program represented as a list of constraints."""
 
-    def __init__(self, src, constr_list = None, let_declarations = None):
-        assert (src.strip()[0] == '(' and src.strip()[-1] == ')') or len(src.split()) == 1,\
-            "Source code is not a valid SMT-LIB string! src: " + src
+    def __init__(self, constr_list, let_declarations=None):
+        # assert (src.strip()[0] == '(' and src.strip()[-1] == ')') or len(src.split()) == 1,\
+        #     "Source code is not a valid SMT-LIB string! src: " + src
+        assert isinstance(constr_list, list)
         if let_declarations is None:
             let_declarations = []
-        if constr_list is None:
-            constr_list = constr_list_from_smt2_code(src)
-        self.src = src
         self.constr = constr_list
         self.let_declarations = let_declarations
 
     def get_wlist(self):
-        return utils.str_to_wlist(self.src)
+        return utils.str_to_wlist(self.get_src())
 
     def get_tree(self):
         return NodeSmt2.from_program_smt2(self)
 
+    def get_src(self):
+        text = ""
+        for c in self.constr:
+            text += c + '\n'
+        return text
+
     def __str__(self):
-        return str(self.src)
+        return str(self.get_src())
 
-
-
-def constr_list_from_smt2_code(code):
-    """Returns list of commands from SMT-LIB 2.0 source where each unasserted constraint
-    is at its own line."""
-    return code.split('\n')
 
 
 

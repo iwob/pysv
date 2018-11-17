@@ -1,5 +1,5 @@
 from pysv import utils
-from pysv.interm import InstructionBlockTranslator
+from pysv import interm
 
 
 class SMTLIBConstraints(object):
@@ -16,7 +16,7 @@ class SMTLIBConstraints(object):
             assertions = []
         self.env = env
         self.assertions = assertions
-        self.ib_translator = InstructionBlockTranslator(show_comments=self.env.show_comments, assignments_as_lets= self.env.assignments_as_lets)
+        self.ib_translator = interm.SmtlibTranslator(show_comments=self.env.show_comments, assignments_as_lets= self.env.assignments_as_lets)
         self.num_asserts = 0
 
     def text_epilog(self):
@@ -38,6 +38,7 @@ class SMTLIBConstraints(object):
 
     def get_program_constraints(self, program):
         """Returns a list of constraints representing program instructions."""
+        assert isinstance(program, interm.ProgramInterm)
         return self.ib_translator.produce_constr_lists(program.src)[0]
 
     def text_introduction(self):

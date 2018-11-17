@@ -7,7 +7,7 @@ class ProgramInterm(object):
     """Program in the intermediary representation abstracting concrete
     programming language details. Program consists of a block of instructions."""
     def __init__(self, src):
-        assert(isinstance(src, InstrBlock))
+        assert isinstance(src, InstrBlock)
         self.src = src
 
     def to_smt2(self, env):
@@ -93,6 +93,9 @@ class InstrBlock(object):
 
     def to_smt2(self, env):
         return interm_to_smt2_ib(self, env=env)
+
+    def __len__(self):
+        return len(self.instructions)
 
     def __iter__(self):
         for i in self.instructions:
@@ -657,17 +660,22 @@ def rename_base_vars(node, old_bid, new_bid):
 
 
 def interm_to_smt2_ib(ib, env):
-    assert(isinstance(ib, InstrBlock))
-    ibt = InstructionBlockTranslator(env.show_comments, env.assignments_as_lets)
-    program_constr = ibt.produce_constr_lists(ib)[0]
-    CODE_SMT = utils.conjunct_constrs_smt2(program_constr)
-    return ProgramSmt2(CODE_SMT, program_constr, ibt.let_declarations)
+    """Converts intermediary representation of an instruction block to SMT-LIB
+     representation."""
+    assert isinstance(ib, InstrBlock)
+    smt_tr = SmtlibTranslator(env.show_comments, env.assignments_as_lets)
+    program_constr = smt_tr.produce_constr_lists(ib)[0]
+    # CODE_SMT = utils.conjunct_constrs_smt2(program_constr)
+    # CODE_SMT = smt_tr.produce_text(ib)
+    return ProgramSmt2(program_constr, smt_tr.let_declarations)
 
 
 def interm_to_smt2_expr(expr, env=None):
-    assert(isinstance(expr, Expression))
+    """Converts intermediary representation of an expression to SMT-LIB
+     representation."""
+    assert isinstance(expr, Expression)
     CODE_SMT = ExprTranslator.apply(expr)
-    return ProgramSmt2(CODE_SMT, [CODE_SMT])
+    return ProgramSmt2([CODE_SMT])
 
 
 
@@ -733,7 +741,7 @@ class ExprTranslator(object):
         :param fun_annotate_subexpr: (=>str) function for naming logical subexpressions in the formula.
         :return: (str) Expression in SMT-LIB 2.0.
         """
-        isinstance(expr, Expression)
+        assert isinstance(expr, Expression)
         t = type(expr)
         if t is Op:
             try:
@@ -752,7 +760,7 @@ class ExprTranslator(object):
             raise Exception(str(t)+': expression type not supported!')
 
     @staticmethod
-    def subexpr_to_smtlib( expr, pre, suff='', fun_annotate_subexpr = None):
+    def subexpr_to_smtlib(expr, pre, suff='', fun_annotate_subexpr = None):
         """Transforms the provided operation subexpression into equivalent subexpression in SMT-LIB 2.0.
 
         :param expr: (Op) Operation subexpression in the intermediary program representation.
@@ -776,47 +784,44 @@ class ExprTranslator(object):
 
 
 
-class InstructionBlockTranslator(object):
+class SmtlibTranslator(object):
 
-    def __init__(self, show_comments = True, assignments_as_lets = True, loop_unrolling = True, loop_unrolling_level = 2):
+    def __init__(self, show_comments = True, assignments_as_lets = True, loop_unrolling = True,
+                 pretty_print_constraints=False, loop_unrolling_level = 2):
         self.show_comments = show_comments
         self.expr_translator = ExprTranslator
         self.assignments_as_lets = assignments_as_lets
         self.loop_unrolling = loop_unrolling
         self.loop_unrolling_level = loop_unrolling_level
+        self.pretty_print_constraints = pretty_print_constraints
         self.let_declarations = []
 
     def reset(self):
         self.let_declarations = []
 
-    # def produce_constraints(self, ib):
-    #     """Generates constraints for the given instruction block. With appropriate flags set certain elements will be commented (in SMT-LIB comments are denoted by ';').
-    #
-    #     :param ib: instruction block.
-    #     :return (List): A List containing assertions (in the form of a text) for SMT solver.
-    #     """
-    #     constr, comm = self.produce_constr_lists(ib)
-    #     final = []
-    #     for c in comm:
-    #         if c[0] == ';':
-    #             if self.show_comments:
-    #                 final.append(c.replace('\n', '\n;'))
-    #         else:
-    #             final.append(utils.assertify(c))
-    #     return final
+
+    def produce_text(self, ib, indent=""):
+        """Returns a string containing nicely printed text of the program constraints."""
+        assert isinstance(ib, InstrBlock)
+        text = ""
+        for ins in ib.instructions:
+            # text += '; ' + str(ins).replace('\n', '\n;') + '\n' # printing instruction for which constraint was generated
+            text += self.produce_text_instr(ins, indent=indent)
+        return text
+
 
     def produce_constr_lists(self, ib):
-        """Returns a tuple of two lists: the first contains only constraints, and the second contains also comments.
-        """
-        assert(isinstance(ib, InstrBlock))
+        """Returns a tuple of two lists: the first contains only constraints, and the second
+         contains also comments."""
+        assert isinstance(ib, InstrBlock)
         self.reset()
         return self.produce_constr_lists_internal(ib)
 
 
     def produce_constr_lists_internal(self, ib):
-        """Returns a tuple of two lists: the first contains only constraints, and the second contains also comments.
-        """
-        assert (isinstance(ib, InstrBlock))
+        """Returns a tuple of two lists: the first contains only constraints, and the second
+         contains also comments."""
+        assert isinstance(ib, InstrBlock)
         constr = []
         comm = []
         for instr in ib.instructions:
@@ -855,17 +860,57 @@ class InstructionBlockTranslator(object):
             raise Exception(str(t)+': instruction not supported!')
 
 
+    def produce_text_instr(self, instr, indent=""):
+        """Generates SMT-LIB code for the given instruction in the form of string.
+
+        :return (str): SMT-LIB code representing semantics of the given instruction.
+        """
+        t = type(instr)
+        if t is InstrAssign:
+            return self.produce_text_assign(instr, indent=indent)
+        elif t is InstrIf:
+            return self.produce_text_if(instr, indent=indent)
+        elif t is InstrWhile:
+            return self.produce_text_while(instr, indent=indent)
+        elif t is InstrHole:
+            raise Exception('Instruction holes are currently not supported!')
+        elif isinstance(instr, Expression):
+            # Expression instruction in most cases does not change outcome of the program
+            # (exception: calling a function which changes state).
+            return ""  #TODO: perhaps ['true'] should be returned for some constraints to be valid...
+        elif isinstance(instr, InstrAssert):
+            return indent + self.expr_translator.apply(instr.expr)
+        else:
+            raise Exception(str(t)+': instruction not supported!')
+
+
     def produce_constraints_assign(self, instr):
+        assert isinstance(instr, InstrAssign)
+        if self.pretty_print_constraints:
+            return [self.produce_text_assign(instr)]
+        else:
+            L = instr.var.id
+            R = self.expr_translator.apply(instr.expr)
+            if self.assignments_as_lets and not instr.is_meta:
+                self.let_declarations.append((L,R))
+                return []
+            else:
+                F1 = '(= ' + L + ' ' + R + ')'
+                return [F1]
+
+    def produce_text_assign(self, instr, indent=""):
+        assert isinstance(instr, InstrAssign)
         L = instr.var.id
         R = self.expr_translator.apply(instr.expr)
         if self.assignments_as_lets and not instr.is_meta:
-            self.let_declarations.append((L,R))
-            return []
+            self.let_declarations.append((L, R))
+            return ""
         else:
-            F1 = '(= ' + L + ' ' + R + ')'
-            return [F1]
+            return indent + '(= ' + L + ' ' + R + ')'
+
 
     def produce_constraints_if(self, instr):
+        assert isinstance(instr, InstrIf)
         cond = self.expr_translator.apply(instr.condition)
         body,cm = self.produce_constr_lists_internal(instr.body)
         orelse,cm = self.produce_constr_lists_internal(instr.orelse)
@@ -876,8 +921,29 @@ class InstructionBlockTranslator(object):
         #F3 = '(or ' + cond + ' (not ' + cond + '))'  # at least one branch must be true in IF THEN ELSE
         return [F1, F2]
 
+    def produce_text_if(self, instr, indent=""):
+        assert isinstance(instr, InstrIf)
+        def text_cond(c, b):
+            return indent + '(=> ' + c + '\n' +\
+                   indent + b +\
+                   indent + ')\n'
+        cond = self.expr_translator.apply(instr.condition)
+        body = self.produce_text(instr.body, indent=indent + "\t")
+        text = text_cond(cond, body)
+        if len(instr.orelse) > 0:
+            orelse = self.produce_text(instr.orelse, indent=indent + "\t")
+            text += text_cond('(not ' + cond + ')', orelse)
+        return text
+
 
     def produce_constraints_while(self, instr):
+        assert isinstance(instr, InstrWhile)
         cond = self.expr_translator.apply(instr.condition)
-        body,cm = self.produce_constr_lists_internal(instr.body)
-        return ["(true)"]
+        body = self.produce_constr_lists_internal(instr.body)
+        return "(true)"
+
+    def produce_text_while(self, instr, indent=""):
+        assert isinstance(instr, InstrWhile)
+        cond = self.expr_translator.apply(instr.condition)
+        body = self.produce_text(instr.body, indent=indent)
+        return indent + "(true)"

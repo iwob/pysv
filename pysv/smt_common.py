@@ -20,8 +20,9 @@ def get_code_in_smt2(code, code_pre, code_post, program_vars, env, holes_decls =
     if env.lang == utils.Options.PYTHON:
         return convert_py_to_smt2(code, code_pre, code_post, program_vars, env, holes_decls)
     elif env.lang == utils.Options.SMT2:
-        main = ProgramSmt2(processHoles(code, holes_decls))
-        return main, ProgramSmt2(code_pre), ProgramSmt2(code_post)
+        code = processHoles(code, holes_decls)
+        main = ProgramSmt2([code])  # this works because SMT lib is a functional language
+        return main, ProgramSmt2([code_pre]), ProgramSmt2([code_post])
     else:
         raise Exception(str(env.lang) + ": unsupported language!")
 
@@ -42,6 +43,7 @@ def processHoles(code, holes_decls):
         for h in holes_decls:
             if h.id in code:
                 code = code.replace(h.id+" ", h.get_function_call()+" ")
+        code = code.replace(" )", ")")
         return code
 
 

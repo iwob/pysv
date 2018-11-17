@@ -35,7 +35,7 @@ def are_semantically_equal(f1, f2):
         constrs.append('(declare-fun ' + name + '() Real)')
     def helper(code):
         expr = ast_utils.py_to_interm_expr(code)
-        constrs.append('(assert ' + expr.to_smt2(env).src + ')')
+        constrs.append('(assert ' + expr.to_smt2(env).get_src() + ')')
 
     constrs.append('(set-logic NRA)')
     decl_var('a')
