@@ -103,7 +103,7 @@ else:
         print(res.text)
         print('[test_synthesis_recursive_grammar] SYNTHESIZED CODE:')
         print(res.final_code)
-        self.assertTrue(res.decision == 'sat' or res.decision == "unknown")
+        self.assertTrue(res.decision == 'sat' or res.decision == "unknown", msg="res.decision={0}".format(res.decision))
 
 
     def test_synthesis_maximize_sum_tc(self):

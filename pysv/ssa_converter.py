@@ -49,10 +49,10 @@ class ConverterSSA(object):
         # Assignment index tracks how many times variables were assigned to.
         # Input variables are assumed to start with some assigned value.
         assign_index = {v: 1 for v in program_vars.input_vars}
-        return self.convert_for_index(ib, assign_index)
+        return self.convert_for_assign_index(ib, assign_index)
 
 
-    def convert_for_index(self, main_ib_0, assign_index):
+    def convert_for_assign_index(self, main_ib_0, assign_index):
         """Returns new instruction block and postcondition converted to SSA
          (Single Static Assignment) form.
 
@@ -131,10 +131,10 @@ class ConverterSSA(object):
         self.update_expr(instr.condition, parent_assign_index)
 
         # Converting both body blocks of IF. Copy of parent_assign_nums dict will be made inside.
-        ib, body_assign_index = self.convert_for_index(instr.body, parent_assign_index)
+        ib, body_assign_index = self.convert_for_assign_index(instr.body, parent_assign_index)
         instr.body = ib
-        ib, orelse_assign_index = self.convert_for_index(instr.orelse, body_assign_index)
-        instr.orelse = ib
+        ib2, orelse_assign_index = self.convert_for_assign_index(instr.orelse, body_assign_index)
+        instr.orelse = ib2
 
         # Balancing (leveling) of IF branches.
         self.balance_var_level_if(instr, body_assign_index, orelse_assign_index, index_before_if)
@@ -150,7 +150,7 @@ class ConverterSSA(object):
         # Converting condition
         self.update_expr(instr.condition, parent_assign_index)
 
-        ib, index = self.convert_for_index(instr.body, parent_assign_index)
+        ib, index = self.convert_for_assign_index(instr.body, parent_assign_index)
         parent_assign_index.update(index)
         instr.body = ib
         return instr, parent_assign_index
@@ -379,23 +379,23 @@ class ConverterSSA(object):
 
 
 
-def convert(ib, post, program_vars, ssa_quote_marked_vars = True, ssa_mark_indexed = True):
+def convert(program, post, program_vars, ssa_quote_marked_vars = True, ssa_mark_indexed = True):
     """Returns an instruction block and postcondition converted to SSA (Single
     Static Assignment) form. This function acts as a wrapper for ConverterSSA object.
 
-    :param ib: (ProgramInterm) instruction block representing the whole program.
+    :param program: (ProgramInterm) instruction block representing the whole program.
     :param post: (Expression) expression representing a postcondition.
     :param program_vars: (ProgramVars) information about variables and their types.
     :return: A tuple containing the SSA form of the given program (block of instructions) and postcondition.
     """
     assert isinstance(program_vars, contract.ProgramVars)
-    assert isinstance(ib, ProgramInterm)
+    assert isinstance(program, ProgramInterm)
     assert isinstance(post, Expression)
 
     ssa_conv = ConverterSSA(ssa_quote_marked_vars = ssa_quote_marked_vars,
                             ssa_mark_indexed=ssa_mark_indexed)
     # Converting program's body.
-    src_ib_ssa, assign_index = ssa_conv.convert(ib.src, program_vars)
+    src_ib_ssa, assign_index = ssa_conv.convert(program.src, program_vars)
     # Converting postcondition.
     ssa_conv.update_expr(post, assign_index)
 
@@ -408,20 +408,20 @@ def convert(ib, post, program_vars, ssa_quote_marked_vars = True, ssa_mark_index
 
 
 
-def convert_ib(ib, program_vars, ssa_quote_marked_vars = True, ssa_mark_indexed = True):
+def convert_ib(program, program_vars, ssa_quote_marked_vars = True, ssa_mark_indexed = True):
     """Returns an instruction block converted to SSA (Single Static
      Assignment) form. This function acts as a wrapper for ConverterSSA object.
 
-    :param ib: (ProgramInterm) instruction block representing the whole program.
+    :param program: (ProgramInterm) instruction block representing the whole program.
     :param program_vars: (ProgramVars) information about variables and their types.
     :return: (ProgramInterm) the SSA form of the given program.
     """
     assert isinstance(program_vars, contract.ProgramVars)
-    assert isinstance(ib, ProgramInterm)
+    assert isinstance(program, ProgramInterm)
 
     ssa_conv = ConverterSSA(ssa_quote_marked_vars = ssa_quote_marked_vars,
                             ssa_mark_indexed=ssa_mark_indexed)
-    src_ib_ssa, assign_index = ssa_conv.convert(ib.src, program_vars)
+    src_ib_ssa, assign_index = ssa_conv.convert(program.src, program_vars)
 
     utils.logger.debug('------------------------------')
     utils.logger.debug('SSA form:')

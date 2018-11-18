@@ -787,7 +787,7 @@ class ExprTranslator(object):
 class SmtlibTranslator(object):
 
     def __init__(self, show_comments = True, assignments_as_lets = True, loop_unrolling = True,
-                 pretty_print_constraints=False, loop_unrolling_level = 2):
+                 pretty_print_constraints=True, loop_unrolling_level = 2):
         self.show_comments = show_comments
         self.expr_translator = ExprTranslator
         self.assignments_as_lets = assignments_as_lets
@@ -800,14 +800,14 @@ class SmtlibTranslator(object):
         self.let_declarations = []
 
 
-    def produce_text(self, ib, indent=""):
-        """Returns a string containing nicely printed text of the program constraints."""
+    def produce_text(self, ib, indent):
+        """Returns a string containing a printed text of the program constraints."""
         assert isinstance(ib, InstrBlock)
-        text = ""
-        for ins in ib.instructions:
-            # text += '; ' + str(ins).replace('\n', '\n;') + '\n' # printing instruction for which constraint was generated
-            text += self.produce_text_instr(ins, indent=indent)
-        return text
+        if len(ib) == 0:
+            return ""
+        else:
+            text = [self.produce_text_instr(ins, indent=indent) for ins in ib.instructions]
+            return "\n".join(text)
 
 
     def produce_constr_lists(self, ib):
@@ -815,38 +815,38 @@ class SmtlibTranslator(object):
          contains also comments."""
         assert isinstance(ib, InstrBlock)
         self.reset()
-        return self.produce_constr_lists_internal(ib)
+        return self.produce_constr_lists_internal(ib, indent="")
 
 
-    def produce_constr_lists_internal(self, ib):
+    def produce_constr_lists_internal(self, ib, indent):
         """Returns a tuple of two lists: the first contains only constraints, and the second
          contains also comments."""
         assert isinstance(ib, InstrBlock)
-        constr = []
-        comm = []
-        for instr in ib.instructions:
-            comm.append('; ' + str(instr).replace('\n', '\n;') + '\n')
-            for c in self.produce_constraints_instr(instr):
-                constr.append(c)
-                comm.append(c)
-        return constr, comm
+        if len(ib) == 0:
+            return [], []
+        else:
+            constr = []
+            comm = []
+            for instr in ib.instructions:
+                comm.append('; ' + str(instr).replace('\n', '\n;') + '\n')
+                for c in self.produce_constraints_instr(instr, indent=indent):
+                    constr.append(c)
+                    comm.append(c)
+            return constr, comm
 
 
-    def produce_constraints_instr(self, instr):
+    def produce_constraints_instr(self, instr, indent):
         """Generates constraints for the given instruction.
 
         :return (list): A List containing constraints for SMT solver.
         """
         t = type(instr)
         if t is InstrAssign:
-            res = self.produce_constraints_assign(instr)
-            if self.show_comments:
-                res.append('\t\t\t;#ASSIGN: ' + str(instr) + '\n')
-            return res
+            return self.produce_constraints_assign(instr, indent=indent)
         elif t is InstrIf:
-            return self.produce_constraints_if(instr)
+            return self.produce_constraints_if(instr, indent=indent)
         elif t is InstrWhile:
-            return self.produce_constraints_while(instr)
+            return self.produce_constraints_while(instr, indent=indent)
         elif t is InstrHole:
             raise Exception('Instruction holes are currently not supported!')
         elif isinstance(instr, Expression):
@@ -860,7 +860,7 @@ class SmtlibTranslator(object):
             raise Exception(str(t)+': instruction not supported!')
 
 
-    def produce_text_instr(self, instr, indent=""):
+    def produce_text_instr(self, instr, indent):
         """Generates SMT-LIB code for the given instruction in the form of string.
 
         :return (str): SMT-LIB code representing semantics of the given instruction.
@@ -884,65 +884,66 @@ class SmtlibTranslator(object):
             raise Exception(str(t)+': instruction not supported!')
 
 
-    def produce_constraints_assign(self, instr):
-        assert isinstance(instr, InstrAssign)
-        if self.pretty_print_constraints:
-            return [self.produce_text_assign(instr)]
-        else:
-            L = instr.var.id
-            R = self.expr_translator.apply(instr.expr)
-            if self.assignments_as_lets and not instr.is_meta:
-                self.let_declarations.append((L,R))
-                return []
-            else:
-                F1 = '(= ' + L + ' ' + R + ')'
-                return [F1]
-
-    def produce_text_assign(self, instr, indent=""):
+    def produce_constraints_assign(self, instr, indent):
         assert isinstance(instr, InstrAssign)
         L = instr.var.id
         R = self.expr_translator.apply(instr.expr)
         if self.assignments_as_lets and not instr.is_meta:
-            self.let_declarations.append((L, R))
-            return ""
-        else:
-            return indent + '(= ' + L + ' ' + R + ')'
+            self.let_declarations.append((L,R))
+            return []
+        F1 = "(= {0} {1})".format(L, R)
+        return [indent + F1] if self.pretty_print_constraints else [F1]
 
 
-    def produce_constraints_if(self, instr):
+    def produce_text_assign(self, instr, indent):
+        assert isinstance(instr, InstrAssign)
+        return "\n".join(self.produce_constraints_assign(instr, indent=indent))
+
+
+    def produce_constraints_if(self, instr, indent):
         assert isinstance(instr, InstrIf)
+        def text_cond(c, b):
+            # b may span multiple lines and is assumed to be indented
+            return "{0}(=> {1}\n{2}\n{0})".format(indent, c, b)
         cond = self.expr_translator.apply(instr.condition)
-        body,cm = self.produce_constr_lists_internal(instr.body)
-        orelse,cm = self.produce_constr_lists_internal(instr.orelse)
-        impl1 = '(=> ' + cond + ' ' + utils.conjunct_constrs_smt2(body) + ')\n\t\t'
-        impl2 = '(=> ' + '(not ' + cond + ')' + ' ' + utils.conjunct_constrs_smt2(orelse) + ')\n\t\t'
-        F1 = impl1
-        F2 = impl2
+        body = self.produce_text(instr.body, indent=indent + "\t")
+        orelse = self.produce_text(instr.orelse, indent=indent + "\t")
+        F1 = text_cond(cond, body)
+        F2 = text_cond('(not ' + cond + ')', orelse)
+        if not self.pretty_print_constraints:
+            F1 = F1.replace("\t", "")
+            F2 = F2.replace("\t", "")
+            # body, cm = self.produce_constr_lists_internal(instr.body, indent=indent)
+            # orelse, cm = self.produce_constr_lists_internal(instr.orelse, indent=indent)
+            # F1 = '(=> ' + cond + ' ' + utils.conjunct_constrs_smt2(body) + ')'
+            # F2 = '(=> ' + '(not ' + cond + ')' + ' ' + utils.conjunct_constrs_smt2(orelse) + ')'
         #F3 = '(or ' + cond + ' (not ' + cond + '))'  # at least one branch must be true in IF THEN ELSE
         return [F1, F2]
 
-    def produce_text_if(self, instr, indent=""):
+    def produce_text_if(self, instr, indent):
         assert isinstance(instr, InstrIf)
-        def text_cond(c, b):
-            return indent + '(=> ' + c + '\n' +\
-                   indent + b +\
-                   indent + ')\n'
-        cond = self.expr_translator.apply(instr.condition)
-        body = self.produce_text(instr.body, indent=indent + "\t")
-        text = text_cond(cond, body)
-        if len(instr.orelse) > 0:
-            orelse = self.produce_text(instr.orelse, indent=indent + "\t")
-            text += text_cond('(not ' + cond + ')', orelse)
-        return text
+        constr = self.produce_constraints_if(instr, indent=indent)
+        return "\n".join(constr)
+        # def text_cond(c, b):
+        #     return indent + '(=> ' + c + '\n' +\
+        #            indent + b +\
+        #            indent + ')'
+        # cond = self.expr_translator.apply(instr.condition)
+        # body = self.produce_text(instr.body, indent=indent + "\t")
+        # text = text_cond(cond, body)
+        # if len(instr.orelse) > 0:
+        #     orelse = self.produce_text(instr.orelse, indent=indent + "\t")
+        #     text += "\n" + text_cond('(not ' + cond + ')', orelse)
+        # return text
 
 
-    def produce_constraints_while(self, instr):
+    def produce_constraints_while(self, instr, indent):
         assert isinstance(instr, InstrWhile)
         cond = self.expr_translator.apply(instr.condition)
-        body = self.produce_constr_lists_internal(instr.body)
+        body = self.produce_constr_lists_internal(instr.body, indent=indent)
         return "(true)"
 
-    def produce_text_while(self, instr, indent=""):
+    def produce_text_while(self, instr, indent):
         assert isinstance(instr, InstrWhile)
         cond = self.expr_translator.apply(instr.condition)
         body = self.produce_text(instr.body, indent=indent)
