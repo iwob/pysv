@@ -318,15 +318,23 @@ class ConverterSSA(object):
             instr.orelse.instructions.append(a2)
 
 
-    def update_expr(self, expr, dictionary):
-        """Updates all variables in the expression to their SSA-form according to a dictionary with number of previous assignments of each variable.
+    def update_expr(self, expr, dictionary, frozen_vars=None):
+        """Updates all variables in the expression to their SSA-form according to a dictionary
+         with number of previous assignments of each variable.
 
         :param expr: (Expression) Expression in which variables will be updated.
-        :param dictionary: (dict[str,int]) Contains mapping of variables base names to number of their previous assignments, e.g. {'x': 0, 'y': 2}. If variable is not in the dictionary than it is treated as occurring for the first time.
+        :param dictionary: (dict[str,int]) Contains mapping of variables base names to number of
+         their previous assignments, e.g. {'x': 0, 'y': 2}. If variable is not in the dictionary
+         than it is treated as occurring for the first time.
+        :param frozen_vars: (dict[str,str]) a set of variables which will not be updated. Useful
+         for example when converting postcondition for leaving out the input variables.
         :return: Nothing. Works in place on the provided expression.
         """
+        if frozen_vars is None:
+            frozen_vars = dict()
         if type(expr) is Var:
-            expr.id = self.actual_var_id(expr.base_id, dictionary)
+            if expr.base_id not in frozen_vars:
+                expr.id = self.actual_var_id(expr.base_id, dictionary)
 
         elif type(expr) is ExprHole:
             # Updating variables dictionary of a hole
@@ -342,7 +350,7 @@ class ConverterSSA(object):
 
         elif type(expr) is Op:
             for e in expr.args:
-                self.update_expr(e, dictionary)
+                self.update_expr(e, dictionary, frozen_vars=frozen_vars)
 
         else: # for constants
             pass
@@ -425,7 +433,7 @@ def convert(program, post, program_vars, ssa_quote_marked_vars = True, ssa_mark_
     # Converting program's body.
     src_ib_ssa, assign_index = ssa_conv.convert(program.src, program_vars)
     # Converting postcondition.
-    ssa_conv.update_expr(post, assign_index)
+    ssa_conv.update_expr(post, assign_index, frozen_vars=program_vars.input_vars)
 
     utils.logger.debug('------------------------------')
     utils.logger.debug('SSA form:')

@@ -51,6 +51,7 @@ while (days > 365)
 zune_while = """
 # days <- input
 year = 1980
+days = input_days
 while days > 365:
     if year % 4 == 0:
         if days > 366:
@@ -61,12 +62,12 @@ while days > 365:
         days -= 365
         year += 1
 """
-pre = "days > 0"
-t1 = (["days == 360"], ["year == 1980", "days == 360"]) #366
-t2 = (["days == 367"], ["year == 1981", "days == 1"])
+pre = "days > 0 and days <= 732"
+t1 = (["input_days == 360"], ["year == 1980", "days == 360"]) #366
+t2 = (["input_days == 367"], ["year == 1981", "days == 1"])
 post = contract.formula_test_cases_py([t1, t2])
 
-program_vars = contract.ProgramVars({"days":"Int"}, {"year":"Int"})
+program_vars = contract.ProgramVars({"input_days":"Int"}, {"year":"Int", "days":"Int"})
 
 env = utils.Options("--loop_unrolling_level 2")
 
@@ -79,7 +80,7 @@ print('----------------------------------------------')
 if res.decision == 'unsat':
     print('Counterexample not found! Program is correct.')
 elif res.decision == 'sat':
-    print(res.witness)
+    print(res.model) #witness
     print('Counterexample found! Program is incorrect.')
 print('----------------------------------------------\n\n')
 
