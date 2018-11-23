@@ -198,12 +198,21 @@ class ConverterSSA(object):
         dictionary[base_id] = new_val
 
 
-    def collect_assigned_vars_in_block(self, ib):
+    def collect_assigned_vars(self, ib):
         """Returns a set of variable objects which were assigned to."""
         vars = set()
         for ins in ib:
             if ins.in_type == Instruction.ASSIGN:
                 vars.add(ins.var)
+            elif ins.in_type == Instruction.IF:
+                av = self.collect_assigned_vars(ins.body)
+                av2 = self.collect_assigned_vars(ins.orelse)
+                for v in av.union(av2):
+                    vars.add(v)
+            elif ins.in_type == Instruction.WHILE:
+                av = self.collect_assigned_vars(ins.body)
+                for v in av:
+                    vars.add(v)
         return vars
 
 
@@ -277,8 +286,8 @@ class ConverterSSA(object):
         :return: Nothing. Updates 'instr' in place.
         """
         assert isinstance(instr, InstrIf)
-        vars1 = self.collect_assigned_vars_in_block(instr.body)
-        vars2 = self.collect_assigned_vars_in_block(instr.orelse)
+        vars1 = self.collect_assigned_vars(instr.body)
+        vars2 = self.collect_assigned_vars(instr.orelse)
         vars_base = {v.base_id for v in vars1.union(vars2)}
         for v in sorted(vars_base):
             assert v in assign_index_body and v in assign_index_body,\

@@ -166,9 +166,8 @@ class VerificationConstr(SMTLIBConstraints):
 
     def get_text_program_assertions(self, program):
         assert isinstance(program, smt2.ProgramSmt2)
-        program_constr = program.constr
         text = ''
-        for c in program_constr:
+        for c in program.constr:
             text += self.assertify(c) + '\n'
         return text
 
