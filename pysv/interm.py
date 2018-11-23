@@ -469,6 +469,10 @@ class Expression(Instruction):
     def to_smt2(self, env):
         return interm_to_smt2_expr(self, env=env)
 
+    def __getitem__(self, item):
+        assert isinstance(item, int)
+        return self.args[item]
+
 
 
 class Op(Expression):

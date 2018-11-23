@@ -49,69 +49,74 @@ class ConverterSSA(object):
         # Assignment index tracks how many times variables were assigned to.
         # Input variables are assumed to start with some assigned value.
         assign_index = {v: 1 for v in program_vars.input_vars}
-        return self.convert_for_assign_index(ib, assign_index)
+        ib_ssa, index, _ = self.convert_for_assign_index(ib, assign_index)
+        return ib_ssa, index
 
 
-    def convert_for_assign_index(self, main_ib_0, assign_index):
+    def convert_for_assign_index(self, main_ib, assign_index, use_index=None):
         """Returns new instruction block and postcondition converted to SSA
          (Single Static Assignment) form.
 
-        ISSUES:\n
-        - all variables are treated as global. Local variables in for example 'if' bodies
-         lead to errors if those variables were not declared before 'if'.
-
-        :param main_ib_0: (InstrBlock) instruction block representing the whole program.
+        :param main_ib: (InstrBlock) instruction block representing the whole program.
         :param assign_index: (dict[str, int]) Dictionary storing the number of times that a
-         given variable was used. If not specified, it will be automatically initialized so
-         that input variables start with 1 assignment.
+         given variable was used.
+        :param use_index: (dict[str, int]) Index to use for variables in expressions. By default
+         it is the the same as assign_index. It would differ for example when we want to have
+         distinct variable assignments in if-else branches, while some expressions or assertions
+         still may depend on values set before the if-else.
         :return: A tuple containing the SSA form of the given program and index of variable
          assignments.
         """
-        assert isinstance(main_ib_0, InstrBlock)
+        assert isinstance(main_ib, InstrBlock)
         assert isinstance(assign_index, dict)
+        if use_index is None:
+            use_index = dict(assign_index)
 
-        main_ib = copy.deepcopy(main_ib_0)
+        main_ib = copy.deepcopy(main_ib)
         assign_index = dict(assign_index)
 
         for instr in main_ib.instructions:
             if isinstance(instr, InstrAssert):
-                _, assign_index = self.convert_instr_assert(instr, assign_index)
+                self.convert_instr_assert(instr, use_index)
             elif isinstance(instr, InstrAssign):
-                _, assign_index = self.convert_instr_assign(instr, assign_index)
+                _, assign_index, use_index = self.convert_instr_assign(instr, assign_index, use_index)
             elif isinstance(instr, InstrIf):
-                _, assign_index = self.convert_instr_if(instr, assign_index)
+                _, assign_index, use_index = self.convert_instr_if(instr, assign_index, use_index)
             elif isinstance(instr, InstrWhile):
-                _, assign_index = self.convert_instr_while(instr, assign_index)
+                _, assign_index, use_index = self.convert_instr_while(instr, assign_index, use_index)
             elif isinstance(instr, InstrCall):
-                _, assign_index = self.convert_instr_call(instr, assign_index)
+                _, assign_index, use_index = self.convert_instr_call(instr, assign_index, use_index)
             elif isinstance(instr, InstrHole):
                 raise Exception('Instruction holes are currently not supported!')
             else:
                 raise Exception("Unsupported instruction of type {0} encountered during SSA conversion.".format(type(instr)))
 
-        return main_ib, assign_index
+        return main_ib, assign_index, use_index
 
 
-    def convert_instr_assert(self, instr, parent_assign_index):
+    def convert_instr_assert(self, instr, parent_use_index):
         assert isinstance(instr, InstrAssert)
         # Converting expression
-        self.update_expr(instr.expr, parent_assign_index)
-        return instr, parent_assign_index
+        self.update_expr(instr.expr, parent_use_index)
+        return instr
 
 
-    def convert_instr_call(self, instr, parent_assign_index):
+    def convert_instr_call(self, instr, parent_assign_index, parent_use_index):
         assert isinstance(instr, InstrCall)
         # Converting expression
         for a in instr.args:
             assert isinstance(a, Expression)
-            self.update_expr(a, parent_assign_index)
-        return instr, parent_assign_index
+            self.update_expr(a, parent_use_index)
+        return instr, parent_assign_index, parent_use_index
 
 
-    def convert_instr_assign(self, instr, parent_assign_index):
+    def convert_instr_assign(self, instr, parent_assign_index, parent_use_index):
         assert isinstance(instr, InstrAssign)
+        parent_assign_index = parent_assign_index.copy()
+        parent_use_index = parent_use_index.copy()
+
         # Converting expression
-        self.update_expr(instr.expr, parent_assign_index)
+        self.update_expr(instr.expr, parent_use_index)
 
         # Converting variable
         x = instr.var.base_id
@@ -119,41 +124,55 @@ class ConverterSSA(object):
         if parent_assign_index[x] > 1:  # not the first (initial) assignment to a variable
             new_id = self.mark_var(x, parent_assign_index[x])
             instr.var.id = new_id
-        return instr, parent_assign_index
+            parent_use_index[x] = parent_assign_index[x]  # equalizing variable between 'use' and 'assign'
+        return instr, parent_assign_index, parent_use_index
 
 
-    def convert_instr_if(self, instr, parent_assign_index):
+    def convert_instr_if(self, instr, parent_assign_index, parent_use_index):
+        """Converts an if-else instruction to its SSA form.
+
+        :return: A tuple containing the SSA form of the if-else instruction, and updated
+         indexes for 'assignments' und 'uses'. Returned 'uses' index is updated in the same way
+         as assignments index, since any assignment in one of if's branches results in
+         synchronizing variables between branches, and those updated variables are to be
+         used in instructions following this if instruction.
+        """
         assert isinstance(instr, InstrIf)
         parent_assign_index = parent_assign_index.copy()
+        parent_use_index = parent_use_index.copy()
         index_before_if = parent_assign_index.copy()
 
         # Converting condition
-        self.update_expr(instr.condition, parent_assign_index)
+        self.update_expr(instr.condition, parent_use_index)
 
         # Converting both body blocks of IF. Copy of parent_assign_nums dict will be made inside.
-        ib, body_assign_index = self.convert_for_assign_index(instr.body, parent_assign_index)
+        ib, b_assign_index, b_use_index = self.convert_for_assign_index(instr.body, parent_assign_index, parent_use_index)
         instr.body = ib
-        ib2, orelse_assign_index = self.convert_for_assign_index(instr.orelse, body_assign_index)
+        ib2, o_assign_index, o_use_index = self.convert_for_assign_index(instr.orelse, b_assign_index, parent_use_index)
         instr.orelse = ib2
 
         # Balancing (leveling) of IF branches.
-        self.balance_var_level_if(instr, body_assign_index, orelse_assign_index, index_before_if)
+        self.balance_var_level_if(instr, b_assign_index, o_assign_index, index_before_if)
 
         # Updating global assignment index.
-        parent_assign_index.update(orelse_assign_index)
-        return instr, parent_assign_index
+        parent_assign_index.update(o_assign_index)
+        parent_use_index.update(o_assign_index)
+        return instr, parent_assign_index, parent_use_index
 
 
-    def convert_instr_while(self, instr, parent_assign_index):
+    def convert_instr_while(self, instr, parent_assign_index, parent_use_index):
         assert isinstance(instr, InstrWhile)
+        parent_assign_index = parent_assign_index.copy()
+        parent_use_index = parent_use_index.copy()
 
         # Converting condition
-        self.update_expr(instr.condition, parent_assign_index)
+        self.update_expr(instr.condition, parent_use_index)
 
-        ib, index = self.convert_for_assign_index(instr.body, parent_assign_index)
+        ib, index, use_index = self.convert_for_assign_index(instr.body, parent_assign_index, parent_use_index)
         parent_assign_index.update(index)
+        parent_use_index.update(use_index)
         instr.body = ib
-        return instr, parent_assign_index
+        return instr, parent_assign_index, parent_use_index
 
 
     def inc_assign_num(self, base_id, dictionary):

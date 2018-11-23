@@ -355,6 +355,49 @@ else:
         self.assertEquals("i", if1.orelse[0].expr.id) # meta
 
 
+    def test_ssa_only_if_else(self):
+        code = """
+if i > 0:
+    i -= 1
+else:
+    assert i > 1
+    i += 1
+assert i > 1
+"""
+        # Expected code:
+        exp_code = """
+if i > 0:
+    i'1 = i - 1
+    i'3 = i'1
+else:
+    assert i > 1
+    i'2 = i + 1
+    i'3 = i'2
+assert i'3 > 1
+"""
+
+        ib = ast_utils.py_to_interm_ib(code)
+        ib = ssa_converter.convert_ib(ib, ProgramVars({"i": "Int"}), ssa_mark_indexed=True)
+        ins = ib.src.instructions
+
+        if1 = ins[0]
+        self.assertEquals(InstrIf, type(if1))
+        self.assertEquals("i", if1.condition[0].id)
+        self.assertEquals(InstrAssign, type(if1.body[0]))
+        self.assertEquals("|i'1|", if1.body[0].var.id)
+        self.assertEquals("i", if1.body[0].expr[0].id)
+        self.assertEquals("|i'3|", if1.body[1].var.id)  # meta
+        self.assertEquals("|i'1|", if1.body[1].expr.id)  # meta
+        self.assertEquals("i", if1.orelse[0].expr[0].id)
+        self.assertEquals("|i'2|", if1.orelse[1].var.id)
+        self.assertEquals("i", if1.orelse[1].expr[0].id)
+        self.assertEquals("|i'3|", if1.orelse[2].var.id)  # meta
+        self.assertEquals("|i'2|", if1.orelse[2].expr.id)  # meta
+
+        self.assertEquals(InstrAssert, type(ins[1]))
+        self.assertEquals("|i'3|", ins[1].expr[0].id)
+
+
     def test_ssa_loop_unroll(self):
         code = """
 i = 1
@@ -384,7 +427,9 @@ else:
         self.assertEquals("|i'2|", if1.body[2].expr.id)  # meta
         self.assertEquals(InstrAssert, type(if1.orelse[0]))
         self.assertEquals("not", if1.orelse[0].expr.id)
+
         assertIns = if1.orelse[0]
-        self.assertTrue(assertIns.expr.args[0].equals(if1.condition.equals(Op("<", args=[Var("|i'2|"), ConstInt(6)]))))
+        self.assertTrue("<", assertIns.expr[0].id)
+        self.assertTrue("|i'1|", assertIns.expr[0][0].id)
         self.assertEquals("|i'3|", if1.orelse[1].var.id)  # meta
         self.assertEquals("|i'1|", if1.orelse[1].expr.id)  # meta
