@@ -107,7 +107,7 @@ class SynthesisConstr(SMTLIBConstraints):
                     '\t\t\t;PRECONDITION\n' + \
                     '\t\t\t' + str(PRE) + '\n' + \
                     '\t\t\t;PROGRAM:\n' + \
-                    '\t\t\t' + str(PROGRAM) + '\n' + \
+                    self.indentize_program(str(PROGRAM), "\t\t\t") + '\n' + \
                     '\t\t)\n' + \
                     '\t\t;POSTCONDITION:\n' + \
                     '\t\t' + str(POST) + '\n' + \
@@ -128,7 +128,7 @@ class SynthesisConstr(SMTLIBConstraints):
                    '\t\t' + str(PRE) + '\n' + \
                    '\t\t(and\n' + \
                    '\t\t\t;PROGRAM:\n' + \
-                   '\t\t\t' + str(PROGRAM) + '\n' + \
+                   self.indentize_program(str(PROGRAM), "\t\t\t") + '\n' + \
                    '\t\t\t;POSTCONDITION:\n' + \
                    '\t\t\t' + str(POST) + '\n' + \
                    '\t\t)\n' + \
@@ -136,6 +136,11 @@ class SynthesisConstr(SMTLIBConstraints):
                    ')'
         body_text = SMTLIBConstraints.wrap_in_let_declarations(body_text, PROGRAM.let_declarations)
         return body_text
+
+
+    def indentize_program(self, PROGRAM, indent):
+        """Indents every line of the text of the program."""
+        return indent + PROGRAM.replace("\n", "\n" + indent)
 
 
     def synthesis_get_forall_vars(self, program_vars, let_decls, free_vars):

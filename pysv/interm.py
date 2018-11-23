@@ -814,12 +814,12 @@ class SmtlibTranslator(object):
             return "\n".join(text)
 
 
-    def produce_constr_lists(self, ib):
+    def produce_constr_lists(self, ib, indent=""):
         """Returns a tuple of two lists: the first contains only constraints, and the second
          contains also comments."""
         assert isinstance(ib, InstrBlock)
         self.reset()
-        return self.produce_constr_lists_internal(ib, indent="")
+        return self.produce_constr_lists_internal(ib, indent=indent)
 
 
     def produce_constr_lists_internal(self, ib, indent):

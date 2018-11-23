@@ -21,8 +21,10 @@ class ProgramSmt2(object):
 
     def get_src(self):
         text = ""
-        for c in self.constr:
-            text += c + '\n'
+        for i, c in enumerate(self.constr):
+            if i > 0:
+                text += '\n'
+            text += c
         return text
 
     def __str__(self):
