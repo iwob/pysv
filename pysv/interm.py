@@ -906,39 +906,24 @@ class SmtlibTranslator(object):
 
     def produce_constraints_if(self, instr, indent):
         assert isinstance(instr, InstrIf)
-        def text_cond(c, b):
+        def text_single_cond(c, b):
             # b may span multiple lines and is assumed to be indented
-            return "{0}(=> {1}\n{2}\n{0})".format(indent, c, b)
+            return "{0}(=> {1} (and\n{2}\n{0}))".format(indent, c, b)
         cond = self.expr_translator.apply(instr.condition)
         body = self.produce_text(instr.body, indent=indent + "\t")
         orelse = self.produce_text(instr.orelse, indent=indent + "\t")
-        F1 = text_cond(cond, body)
-        F2 = text_cond('(not ' + cond + ')', orelse)
+        F1 = text_single_cond(cond, body)
+        F2 = text_single_cond('(not ' + cond + ')', orelse)
         if not self.pretty_print_constraints:
             F1 = F1.replace("\t", "")
             F2 = F2.replace("\t", "")
-            # body, cm = self.produce_constr_lists_internal(instr.body, indent=indent)
-            # orelse, cm = self.produce_constr_lists_internal(instr.orelse, indent=indent)
-            # F1 = '(=> ' + cond + ' ' + utils.conjunct_constrs_smt2(body) + ')'
-            # F2 = '(=> ' + '(not ' + cond + ')' + ' ' + utils.conjunct_constrs_smt2(orelse) + ')'
-        #F3 = '(or ' + cond + ' (not ' + cond + '))'  # at least one branch must be true in IF THEN ELSE
         return [F1, F2]
+
 
     def produce_text_if(self, instr, indent):
         assert isinstance(instr, InstrIf)
         constr = self.produce_constraints_if(instr, indent=indent)
         return "\n".join(constr)
-        # def text_cond(c, b):
-        #     return indent + '(=> ' + c + '\n' +\
-        #            indent + b +\
-        #            indent + ')'
-        # cond = self.expr_translator.apply(instr.condition)
-        # body = self.produce_text(instr.body, indent=indent + "\t")
-        # text = text_cond(cond, body)
-        # if len(instr.orelse) > 0:
-        #     orelse = self.produce_text(instr.orelse, indent=indent + "\t")
-        #     text += "\n" + text_cond('(not ' + cond + ')', orelse)
-        # return text
 
 
     def produce_constraints_while(self, instr, indent):
@@ -946,6 +931,7 @@ class SmtlibTranslator(object):
         cond = self.expr_translator.apply(instr.condition)
         body = self.produce_constr_lists_internal(instr.body, indent=indent)
         return "(true)"
+
 
     def produce_text_while(self, instr, indent):
         assert isinstance(instr, InstrWhile)
