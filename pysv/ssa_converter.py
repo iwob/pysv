@@ -59,7 +59,7 @@ class ConverterSSA(object):
 
         :param main_ib: (InstrBlock) instruction block representing the whole program.
         :param assign_index: (dict[str, int]) Dictionary storing the number of times that a
-         given variable was used.
+         given variable was assigned to.
         :param use_index: (dict[str, int]) Index to use for variables in expressions. By default
          it is the the same as assign_index. It would differ for example when we want to have
          distinct variable assignments in if-else branches, while some expressions or assertions
@@ -140,7 +140,6 @@ class ConverterSSA(object):
         assert isinstance(instr, InstrIf)
         parent_assign_index = parent_assign_index.copy()
         parent_use_index = parent_use_index.copy()
-        index_before_if = parent_assign_index.copy()
 
         # Converting condition
         self.update_expr(instr.condition, parent_use_index)
@@ -152,7 +151,7 @@ class ConverterSSA(object):
         instr.orelse = ib2
 
         # Balancing (leveling) of IF branches.
-        self.balance_var_level_if(instr, b_assign_index, o_assign_index, index_before_if)
+        self.balance_var_level_if(instr, b_assign_index, b_use_index, o_assign_index, o_use_index)
 
         # Updating global assignment index.
         parent_assign_index.update(o_assign_index)
@@ -216,52 +215,11 @@ class ConverterSSA(object):
         return vars
 
 
-    def balance_var_level_if(self, instr, assign_index_body, assign_index_orelse, index_before_if):
+    def balance_var_level_if(self, instr, assign_index_body, use_index_body, assign_index_orelse,
+                             use_index_orelse):
         """Adds meta-instructions for blocks of IF for all variables in if's bodies.
 
-        Example:\n
-         x = 0; z = 0
-         if b:
-             z' = 1
-             x' = 4
-         else:
-             x'' = 5
-
-        After balancing:\n
-         x = 0; z = 0
-         if b:
-             z' = 1
-             x' = 4
-             x''' = x'  (meta)
-             z'' = z' (meta)
-         else:
-             x'' = 5
-             x''' = x''  (meta)
-             z'' = z  (meta)
-
-
-        Example 2:\n
-         x = 0
-         if COND1:
-            x += 1
-            if COND2:
-                x += 1
-
-        After balancing:\n
-         x = 0
-         if COND1:
-            x' = x + 1
-            if COND2:
-                x'' = x' + 1
-                x''' = x''  (meta)
-            else:  (meta)
-                x''' = x'  (meta)
-            x'''' = x''' (meta)
-         else:
-            x'''' = x
-
-
-        Example 3:\n
+        Example 1:\n
          x = 0
          if COND1:
             x += 1
@@ -277,12 +235,38 @@ class ConverterSSA(object):
             x'2 = x - 1
             x'3 = x'2 (meta)
 
-        :param instr: if-instruction to be balanced.
-        :param assign_index_body: Dictionary containing number of assignments to variables
-         after the body block of if-instruction.
-        :param assign_index_orelse: Dictionary containing number of assignments to variables
-         after the orelse block of if-instruction.
-        :param index_before_if: Dictionary of assignment before if-instruction.
+
+        Example 2:\n
+         x = 0
+         if COND1:
+            x += 1
+            if COND2:
+                x += 1
+
+        After balancing:\n
+         x = 0
+         if COND1:
+            x'1 = x + 1
+            if COND2:
+                x'2 = x'1 + 1
+                x'3 = x'2  (meta)
+            else:  (meta)
+                x'3 = x'1  (meta)
+            x'4 = x'3 (meta)
+         else:
+            x'4 = x
+
+        :param instr: (InstrIf) if-instruction to be balanced.
+        :param assign_index_body: (dict[str,int]) Stores the number of times that variables were
+         assigned to from the perspective of if's main block.
+        :param use_index_body: (dict[str,int]) Stores the last assignment for a given variable
+         from the perspective of if's main block. Is not affected by parallel blocks in if instruction,
+         while the assign_index'es are.
+        :param assign_index_orelse: (dict[str,int]) Stores the number of times that variables were
+         assigned to from the perspective of if's else block.
+        :param use_index_orelse: (dict[str,int]) Stores the last assignment for a given variable
+         from the perspective of if's else block. Is not affected by parallel blocks in if instruction,
+         while the assign_index'es are.
         :return: Nothing. Updates 'instr' in place.
         """
         assert isinstance(instr, InstrIf)
@@ -290,25 +274,20 @@ class ConverterSSA(object):
         vars2 = self.collect_assigned_vars(instr.orelse)
         vars_base = {v.base_id for v in vars1.union(vars2)}
         for v in sorted(vars_base):
-            assert v in assign_index_body and v in assign_index_body,\
-                "Variable {0} is not initialized!".format(v)
+            assert v in assign_index_body and v in assign_index_orelse,\
+                "Variable {0} is not initialized!".format(v)  # v was initialized before reaching this if
 
-            num0 = index_before_if.get(v, 0)
-            num1 = assign_index_body[v]
-            num2 = assign_index_orelse[v]
-
-            n = max(num1, num2)
+            # v is known to be assigned some value in at least one branch of if
+            n1 = assign_index_body[v]
+            n2 = assign_index_orelse[v]
+            n = max(n1, n2)
             leftv = self.mark_var(v, n + 1)
 
-            if num1 > num0:
-                rightv1 = self.mark_var_index(v, assign_index_body)
-            else:
-                rightv1 = self.mark_var_index(v, index_before_if) # use index_before_if if no instruction was used in this block
-
-            if num2 > num1:
-                rightv2 = self.mark_var_index(v, assign_index_orelse)
-            else:
-                rightv2 = self.mark_var_index(v, index_before_if) # use index_before_if if no instruction was used in this block
+            # use_index always contains <= values than the assign_index.
+            # use_index after the execution of an if branch contains versions of the variables
+            # for the right hand of the balancing assignment instruction.
+            rightv1 = self.mark_var_index(v, use_index_body)
+            rightv2 = self.mark_var_index(v, use_index_orelse)
 
             self.update_dictionary(assign_index_body, v, n + 1)
             self.update_dictionary(assign_index_orelse, v, n + 1)
