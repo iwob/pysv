@@ -117,7 +117,6 @@ class Instruction(object):
     ASSIGN = 'assign'
     WHILE = 'while'
     IF = 'if'
-    MULTIIF = 'multiif'
     EXPR = 'expr'
     CALL = 'call'
     ASSERT = 'assert'
@@ -270,95 +269,6 @@ class InstrWhile(Instruction):
 
     def get_holes_definitions(self):
         res = self.condition.get_holes_definitions()
-        for ib in self.get_instruction_blocks():
-            res.extend(ib.get_holes_definitions())
-        return res
-
-
-
-class InstrMultiIf(Instruction):
-    def __init__(self, conds, blocks, orelse=None):
-        """An instruction representing if-elif-else construct.
-
-        :param conds: (list[Expression]) list of conditions for if-elif parts.
-        :param blocks: (list[InstrBlock]) list of instruction blocks for different if-elif parts.
-        :param orelse: (InstrBlock) block for the 'else' structure fragment.
-        """
-        Instruction.__init__(self)
-        if orelse is None:
-            orelse = InstrBlock([])
-        elif isinstance(orelse, list):
-            orelse = InstrBlock(orelse)
-        assert isinstance(conds, list)
-        assert isinstance(blocks, list)
-        assert isinstance(orelse, InstrBlock)
-        assert len(conds) == len(blocks)
-        self.in_type = Instruction.MULTIIF
-        self.conditions = conds
-        self.blocks = blocks
-        self.orelse = orelse
-
-    def get_instruction_blocks(self):
-        res = [self.orelse]
-        res.extend(self.blocks)
-        return res
-
-    def __str__(self):
-        res = ""
-        for i, condition in enumerate(self.conditions):
-            body = self.blocks[i]
-            op = "if" if i == 0 else "elif"
-            res += "{0} ({1}) {\n".format(op, str(condition))
-            res += str(body)
-            res += '}\n'
-        if len(self.orelse) > 0:
-            res += 'else {\n'
-            res += str(self.orelse)
-            res += '}'
-        return res
-
-    def rename_var(self, old_id, new_id):
-        for cond in self.conditions:
-            cond.rename_var(old_id, new_id)
-        for body in self.blocks:
-            for instr in body.instructions:
-                instr.rename_var(old_id, new_id)
-        for instr in self.orelse.instructions:
-            instr.rename_var(old_id, new_id)
-
-    def collect_variables(self):
-        res = []
-        for cond in self.conditions:
-            res.extend(cond.collect_variables())
-        for body in self.blocks:
-            res.extend(body.collect_variables())
-        res.extend(self.orelse.collect_variables())
-        return list(set(res))
-
-    def collect_nodes(self):
-        res = [self]
-        for cond in self.conditions:
-            res.extend(cond.collect_nodes())
-        for ib in self.get_instruction_blocks():
-            res.extend(ib.collect_nodes())
-        return res
-
-    def equals(self, other):
-        if not isinstance(other, InstrMultiIf) or\
-           not len(self.conditions) == len(other.conditions) or\
-           not self.orelse.equals(other.orelse):
-            return False
-        else:
-            for i in range(len(self.conditions)):
-                if not self.conditions[i].equals(other.conditions[i]) or\
-                   not self.blocks[i].equals(other.blocks[i]):
-                    return False
-            return True
-
-    def get_holes_definitions(self):
-        res = []
-        for cond in self.conditions:
-            res.extend(cond.get_holes_definitions())
         for ib in self.get_instruction_blocks():
             res.extend(ib.get_holes_definitions())
         return res
