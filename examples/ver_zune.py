@@ -10,7 +10,6 @@ sys.path.insert(1, os.path.abspath('..'))
 # This example presents the use of SMT solvers to verify correctness of the well known Zune bug.
 #
 #
-# NOTE: This example is currently work in progress and is not currently working.
 #---------------------------------------------------------------------------------------------------
 
 from pysv import smt_verifier
@@ -47,7 +46,6 @@ while (days > 365)
 
 
 
-# Only one leap
 zune_while = """
 # input_days <- input
 year = 1980

@@ -11,11 +11,6 @@ class ConverterSSA(object):
      version of this variable. SSA form is necessary in the context of SMT verification and
      synthesis because in logical formulas we must associate each variable with exactly one value.
 
-    TODO:
-    - Currently every assignment results in creating marked variable, even if this is the first
-     use of this variable. It is important to note that if certain variable is present in the
-     precondition, then indeed it's first program assignment must be marked to avoid errors.
-
     Attributes:
     -----------
     :param ssa_marker: (str) Marker being added on the end of a variable name to mark

@@ -1,4 +1,3 @@
-from pysv import utils
 from pysv.smt2 import ProgramSmt2
 
 

@@ -33,10 +33,12 @@ class ASTToInstrBlockConverter(ast.NodeVisitor):
         # print('[mv] ' + ast.dump(node))
         t = type(node)
         if t == ast.Assign:
-            var = Var(node.targets[0].id) # TODO: check what if there are several targets
-            expr = ASTExprConverter.create_expr(node.value, self.holes_decls)
-            instr = InstrAssign(var, expr)
-            return [instr]
+            instrs = []
+            for target in node.targets:
+                var = Var(target.id)
+                expr = ASTExprConverter.create_expr(node.value, self.holes_decls)  # expr created anew for every variable
+                instrs.append(InstrAssign(var, expr))
+            return instrs
 
         if t == ast.AugAssign:
             var1 = Var(node.target.id)

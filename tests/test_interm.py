@@ -104,9 +104,6 @@ x = x + 5
         self.assertEquals("x", ins[3].var.id)
 
 
-
-
-
     def test_interm_while(self):
         code = """
 i = 1
@@ -134,3 +131,21 @@ i *= 2
         self.assertEquals("i", ins[2].var.id)
         self.assertEquals("i", ins[2].expr.args[0].id)
         self.assertEquals(2, ins[2].expr.args[1].value)
+
+
+    def test_interm_assign_many_targets(self):
+        code = """
+i = j = k = 0
+"""
+        ib = ast_utils.py_to_interm_ib(code)
+        ins = ib.src.instructions
+
+        self.assertEquals(InstrAssign, type(ins[0]))
+        self.assertEquals("i", ins[0].var.id)
+        self.assertEquals(0, ins[0].expr.value)
+        self.assertEquals(InstrAssign, type(ins[1]))
+        self.assertEquals("j", ins[1].var.id)
+        self.assertEquals(0, ins[1].expr.value)
+        self.assertEquals(InstrAssign, type(ins[2]))
+        self.assertEquals("k", ins[2].var.id)
+        self.assertEquals(0, ins[2].expr.value)
