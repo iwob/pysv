@@ -172,7 +172,7 @@ class ConverterSSA(object):
     def inc_assign_num(self, base_id, dictionary):
         """Updates dictionary of the number of assignments per variable name.
 
-        :param base_id: (str) base ID of a variable which was assigned to, so it's counter
+        :param base_id: (str) base ID of a variable which was assigned to, so its counter
         needs to be incremented.
         :param dictionary: (dict) assignment index.
         """
@@ -185,7 +185,7 @@ class ConverterSSA(object):
     def update_dictionary(self, dictionary, base_id, new_val):
         """Updates dictionary of the number of assignments per variable name.
 
-        :param base_id: base ID of a variable which was assigned to, so it's counter needs to be incremented.
+        :param base_id: base ID of a variable which was assigned to, so its counter needs to be incremented.
         :param dictionary: (dict) assignment index.
         :param new_val: (int) value to be inserted.
         """
