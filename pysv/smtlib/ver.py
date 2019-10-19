@@ -20,6 +20,9 @@ class VerificationConstr(SMTLIBConstraints):
         :param program_vars: (ProgramVars) Information about identifiers and types of all variables in the program.
         :return: (str) Complete text of SMT-LIB 2.0 script realizing verification task.
         """
+        assert isinstance(ib, smt2.ProgramSmt2)
+        assert isinstance(pre, smt2.ProgramSmt2)
+        assert isinstance(post, smt2.ProgramSmt2)
         self.reset_state()
         decls = self.produce_vars_declarations(program_vars.all())
 
@@ -163,9 +166,8 @@ class VerificationConstr(SMTLIBConstraints):
 
     def get_text_program_assertions(self, program):
         assert isinstance(program, smt2.ProgramSmt2)
-        program_constr = program.constr
         text = ''
-        for c in program_constr:
+        for c in program.constr:
             text += self.assertify(c) + '\n'
         return text
 

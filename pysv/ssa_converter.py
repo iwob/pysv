@@ -49,69 +49,74 @@ class ConverterSSA(object):
         # Assignment index tracks how many times variables were assigned to.
         # Input variables are assumed to start with some assigned value.
         assign_index = {v: 1 for v in program_vars.input_vars}
-        return self.convert_for_index(ib, assign_index)
+        ib_ssa, index, _ = self.convert_for_assign_index(ib, assign_index)
+        return ib_ssa, index
 
 
-    def convert_for_index(self, main_ib_0, assign_index):
+    def convert_for_assign_index(self, main_ib, assign_index, use_index=None):
         """Returns new instruction block and postcondition converted to SSA
          (Single Static Assignment) form.
 
-        ISSUES:\n
-        - all variables are treated as global. Local variables in for example 'if' bodies
-         lead to errors if those variables were not declared before 'if'.
-
-        :param main_ib_0: (InstrBlock) instruction block representing the whole program.
+        :param main_ib: (InstrBlock) instruction block representing the whole program.
         :param assign_index: (dict[str, int]) Dictionary storing the number of times that a
-         given variable was used. If not specified, it will be automatically initialized so
-         that input variables start with 1 assignment.
+         given variable was assigned to.
+        :param use_index: (dict[str, int]) Index to use for variables in expressions. By default
+         it is the the same as assign_index. It would differ for example when we want to have
+         distinct variable assignments in if-else branches, while some expressions or assertions
+         still may depend on values set before the if-else.
         :return: A tuple containing the SSA form of the given program and index of variable
          assignments.
         """
-        assert isinstance(main_ib_0, InstrBlock)
+        assert isinstance(main_ib, InstrBlock)
         assert isinstance(assign_index, dict)
+        if use_index is None:
+            use_index = dict(assign_index)
 
-        main_ib = copy.deepcopy(main_ib_0)
+        main_ib = copy.deepcopy(main_ib)
         assign_index = dict(assign_index)
 
         for instr in main_ib.instructions:
             if isinstance(instr, InstrAssert):
-                _, assign_index = self.convert_instr_assert(instr, assign_index)
+                self.convert_instr_assert(instr, use_index)
             elif isinstance(instr, InstrAssign):
-                _, assign_index = self.convert_instr_assign(instr, assign_index)
+                _, assign_index, use_index = self.convert_instr_assign(instr, assign_index, use_index)
             elif isinstance(instr, InstrIf):
-                _, assign_index = self.convert_instr_if(instr, assign_index)
+                _, assign_index, use_index = self.convert_instr_if(instr, assign_index, use_index)
             elif isinstance(instr, InstrWhile):
-                _, assign_index = self.convert_instr_while(instr, assign_index)
+                _, assign_index, use_index = self.convert_instr_while(instr, assign_index, use_index)
             elif isinstance(instr, InstrCall):
-                _, assign_index = self.convert_instr_call(instr, assign_index)
+                _, assign_index, use_index = self.convert_instr_call(instr, assign_index, use_index)
             elif isinstance(instr, InstrHole):
                 raise Exception('Instruction holes are currently not supported!')
             else:
                 raise Exception("Unsupported instruction of type {0} encountered during SSA conversion.".format(type(instr)))
 
-        return main_ib, assign_index
+        return main_ib, assign_index, use_index
 
 
-    def convert_instr_assert(self, instr, parent_assign_index):
+    def convert_instr_assert(self, instr, parent_use_index):
         assert isinstance(instr, InstrAssert)
         # Converting expression
-        self.update_expr(instr.expr, parent_assign_index)
-        return instr, parent_assign_index
+        self.update_expr(instr.expr, parent_use_index)
+        return instr
 
 
-    def convert_instr_call(self, instr, parent_assign_index):
+    def convert_instr_call(self, instr, parent_assign_index, parent_use_index):
         assert isinstance(instr, InstrCall)
         # Converting expression
         for a in instr.args:
             assert isinstance(a, Expression)
-            self.update_expr(a, parent_assign_index)
-        return instr, parent_assign_index
+            self.update_expr(a, parent_use_index)
+        return instr, parent_assign_index, parent_use_index
 
 
-    def convert_instr_assign(self, instr, parent_assign_index):
+    def convert_instr_assign(self, instr, parent_assign_index, parent_use_index):
         assert isinstance(instr, InstrAssign)
+        parent_assign_index = parent_assign_index.copy()
+        parent_use_index = parent_use_index.copy()
+
         # Converting expression
-        self.update_expr(instr.expr, parent_assign_index)
+        self.update_expr(instr.expr, parent_use_index)
 
         # Converting variable
         x = instr.var.base_id
@@ -119,41 +124,54 @@ class ConverterSSA(object):
         if parent_assign_index[x] > 1:  # not the first (initial) assignment to a variable
             new_id = self.mark_var(x, parent_assign_index[x])
             instr.var.id = new_id
-        return instr, parent_assign_index
+            parent_use_index[x] = parent_assign_index[x]  # equalizing variable between 'use' and 'assign'
+        return instr, parent_assign_index, parent_use_index
 
 
-    def convert_instr_if(self, instr, parent_assign_index):
+    def convert_instr_if(self, instr, parent_assign_index, parent_use_index):
+        """Converts an if-else instruction to its SSA form.
+
+        :return: A tuple containing the SSA form of the if-else instruction, and updated
+         indexes for 'assignments' und 'uses'. Returned 'uses' index is updated in the same way
+         as assignments index, since any assignment in one of if's branches results in
+         synchronizing variables between branches, and those updated variables are to be
+         used in instructions following this if instruction.
+        """
         assert isinstance(instr, InstrIf)
         parent_assign_index = parent_assign_index.copy()
-        index_before_if = parent_assign_index.copy()
+        parent_use_index = parent_use_index.copy()
 
         # Converting condition
-        self.update_expr(instr.condition, parent_assign_index)
+        self.update_expr(instr.condition, parent_use_index)
 
         # Converting both body blocks of IF. Copy of parent_assign_nums dict will be made inside.
-        ib, body_assign_index = self.convert_for_index(instr.body, parent_assign_index)
+        ib, b_assign_index, b_use_index = self.convert_for_assign_index(instr.body, parent_assign_index, parent_use_index)
         instr.body = ib
-        ib, orelse_assign_index = self.convert_for_index(instr.orelse, body_assign_index)
-        instr.orelse = ib
+        ib2, o_assign_index, o_use_index = self.convert_for_assign_index(instr.orelse, b_assign_index, parent_use_index)
+        instr.orelse = ib2
 
         # Balancing (leveling) of IF branches.
-        self.balance_var_level_if(instr, body_assign_index, orelse_assign_index, index_before_if)
+        self.balance_var_level_if(instr, b_assign_index, b_use_index, o_assign_index, o_use_index)
 
         # Updating global assignment index.
-        parent_assign_index.update(orelse_assign_index)
-        return instr, parent_assign_index
+        parent_assign_index.update(o_assign_index)
+        parent_use_index.update(o_assign_index)
+        return instr, parent_assign_index, parent_use_index
 
 
-    def convert_instr_while(self, instr, parent_assign_index):
+    def convert_instr_while(self, instr, parent_assign_index, parent_use_index):
         assert isinstance(instr, InstrWhile)
+        parent_assign_index = parent_assign_index.copy()
+        parent_use_index = parent_use_index.copy()
 
         # Converting condition
-        self.update_expr(instr.condition, parent_assign_index)
+        self.update_expr(instr.condition, parent_use_index)
 
-        ib, index = self.convert_for_index(instr.body, parent_assign_index)
+        ib, index, use_index = self.convert_for_assign_index(instr.body, parent_assign_index, parent_use_index)
         parent_assign_index.update(index)
+        parent_use_index.update(use_index)
         instr.body = ib
-        return instr, parent_assign_index
+        return instr, parent_assign_index, parent_use_index
 
 
     def inc_assign_num(self, base_id, dictionary):
@@ -179,61 +197,29 @@ class ConverterSSA(object):
         dictionary[base_id] = new_val
 
 
-    def collect_assigned_vars_in_block(self, ib):
+    def collect_assigned_vars(self, ib):
         """Returns a set of variable objects which were assigned to."""
         vars = set()
         for ins in ib:
             if ins.in_type == Instruction.ASSIGN:
                 vars.add(ins.var)
+            elif ins.in_type == Instruction.IF:
+                av = self.collect_assigned_vars(ins.body)
+                av2 = self.collect_assigned_vars(ins.orelse)
+                for v in av.union(av2):
+                    vars.add(v)
+            elif ins.in_type == Instruction.WHILE:
+                av = self.collect_assigned_vars(ins.body)
+                for v in av:
+                    vars.add(v)
         return vars
 
 
-    def balance_var_level_if(self, instr, assign_index_body, assign_index_orelse, index_before_if):
+    def balance_var_level_if(self, instr, assign_index_body, use_index_body, assign_index_orelse,
+                             use_index_orelse):
         """Adds meta-instructions for blocks of IF for all variables in if's bodies.
 
-        Example:\n
-         x = 0; z = 0
-         if b:
-             z' = 1
-             x' = 4
-         else:
-             x'' = 5
-
-        After balancing:\n
-         x = 0; z = 0
-         if b:
-             z' = 1
-             x' = 4
-             x''' = x'  (meta)
-             z'' = z' (meta)
-         else:
-             x'' = 5
-             x''' = x''  (meta)
-             z'' = z  (meta)
-
-
-        Example 2:\n
-         x = 0
-         if COND1:
-            x += 1
-            if COND2:
-                x += 1
-
-        After balancing:\n
-         x = 0
-         if COND1:
-            x' = x + 1
-            if COND2:
-                x'' = x' + 1
-                x''' = x''  (meta)
-            else:  (meta)
-                x''' = x'  (meta)
-            x'''' = x''' (meta)
-         else:
-            x'''' = x
-
-
-        Example 3:\n
+        Example 1:\n
          x = 0
          if COND1:
             x += 1
@@ -249,38 +235,59 @@ class ConverterSSA(object):
             x'2 = x - 1
             x'3 = x'2 (meta)
 
-        :param instr: if-instruction to be balanced.
-        :param assign_index_body: Dictionary containing number of assignments to variables
-         after the body block of if-instruction.
-        :param assign_index_orelse: Dictionary containing number of assignments to variables
-         after the orelse block of if-instruction.
-        :param index_before_if: Dictionary of assignment before if-instruction.
+
+        Example 2:\n
+         x = 0
+         if COND1:
+            x += 1
+            if COND2:
+                x += 1
+
+        After balancing:\n
+         x = 0
+         if COND1:
+            x'1 = x + 1
+            if COND2:
+                x'2 = x'1 + 1
+                x'3 = x'2  (meta)
+            else:  (meta)
+                x'3 = x'1  (meta)
+            x'4 = x'3 (meta)
+         else:
+            x'4 = x
+
+        :param instr: (InstrIf) if-instruction to be balanced.
+        :param assign_index_body: (dict[str,int]) Stores the number of times that variables were
+         assigned to from the perspective of if's main block.
+        :param use_index_body: (dict[str,int]) Stores the last assignment for a given variable
+         from the perspective of if's main block. Is not affected by parallel blocks in if instruction,
+         while the assign_index'es are.
+        :param assign_index_orelse: (dict[str,int]) Stores the number of times that variables were
+         assigned to from the perspective of if's else block.
+        :param use_index_orelse: (dict[str,int]) Stores the last assignment for a given variable
+         from the perspective of if's else block. Is not affected by parallel blocks in if instruction,
+         while the assign_index'es are.
         :return: Nothing. Updates 'instr' in place.
         """
         assert isinstance(instr, InstrIf)
-        vars1 = self.collect_assigned_vars_in_block(instr.body)
-        vars2 = self.collect_assigned_vars_in_block(instr.orelse)
+        vars1 = self.collect_assigned_vars(instr.body)
+        vars2 = self.collect_assigned_vars(instr.orelse)
         vars_base = {v.base_id for v in vars1.union(vars2)}
         for v in sorted(vars_base):
-            assert v in assign_index_body and v in assign_index_body,\
-                "Variable {0} is not initialized!".format(v)
+            assert v in assign_index_body and v in assign_index_orelse,\
+                "Variable {0} is not initialized!".format(v)  # v was initialized before reaching this if
 
-            num0 = index_before_if.get(v, 0)
-            num1 = assign_index_body[v]
-            num2 = assign_index_orelse[v]
-
-            n = max(num1, num2)
+            # v is known to be assigned some value in at least one branch of if
+            n1 = assign_index_body[v]
+            n2 = assign_index_orelse[v]
+            n = max(n1, n2)
             leftv = self.mark_var(v, n + 1)
 
-            if num1 > num0:
-                rightv1 = self.mark_var_index(v, assign_index_body)
-            else:
-                rightv1 = self.mark_var_index(v, index_before_if) # use index_before_if if no instruction was used in this block
-
-            if num2 > num1:
-                rightv2 = self.mark_var_index(v, assign_index_orelse)
-            else:
-                rightv2 = self.mark_var_index(v, index_before_if) # use index_before_if if no instruction was used in this block
+            # use_index always contains <= values than the assign_index.
+            # use_index after the execution of an if branch contains versions of the variables
+            # for the right hand of the balancing assignment instruction.
+            rightv1 = self.mark_var_index(v, use_index_body)
+            rightv2 = self.mark_var_index(v, use_index_orelse)
 
             self.update_dictionary(assign_index_body, v, n + 1)
             self.update_dictionary(assign_index_orelse, v, n + 1)
@@ -290,15 +297,23 @@ class ConverterSSA(object):
             instr.orelse.instructions.append(a2)
 
 
-    def update_expr(self, expr, dictionary):
-        """Updates all variables in the expression to their SSA-form according to a dictionary with number of previous assignments of each variable.
+    def update_expr(self, expr, dictionary, frozen_vars=None):
+        """Updates all variables in the expression to their SSA-form according to a dictionary
+         with number of previous assignments of each variable.
 
         :param expr: (Expression) Expression in which variables will be updated.
-        :param dictionary: (dict[str,int]) Contains mapping of variables base names to number of their previous assignments, e.g. {'x': 0, 'y': 2}. If variable is not in the dictionary than it is treated as occurring for the first time.
+        :param dictionary: (dict[str,int]) Contains mapping of variables base names to number of
+         their previous assignments, e.g. {'x': 0, 'y': 2}. If variable is not in the dictionary
+         than it is treated as occurring for the first time.
+        :param frozen_vars: (dict[str,str]) a set of variables which will not be updated. Useful
+         for example when converting postcondition for leaving out the input variables.
         :return: Nothing. Works in place on the provided expression.
         """
+        if frozen_vars is None:
+            frozen_vars = dict()
         if type(expr) is Var:
-            expr.id = self.actual_var_id(expr.base_id, dictionary)
+            if expr.base_id not in frozen_vars:
+                expr.id = self.actual_var_id(expr.base_id, dictionary)
 
         elif type(expr) is ExprHole:
             # Updating variables dictionary of a hole
@@ -314,7 +329,7 @@ class ConverterSSA(object):
 
         elif type(expr) is Op:
             for e in expr.args:
-                self.update_expr(e, dictionary)
+                self.update_expr(e, dictionary, frozen_vars=frozen_vars)
 
         else: # for constants
             pass
@@ -379,25 +394,25 @@ class ConverterSSA(object):
 
 
 
-def convert(ib, post, program_vars, ssa_quote_marked_vars = True, ssa_mark_indexed = True):
+def convert(program, post, program_vars, ssa_quote_marked_vars = True, ssa_mark_indexed = True):
     """Returns an instruction block and postcondition converted to SSA (Single
     Static Assignment) form. This function acts as a wrapper for ConverterSSA object.
 
-    :param ib: (ProgramInterm) instruction block representing the whole program.
+    :param program: (ProgramInterm) instruction block representing the whole program.
     :param post: (Expression) expression representing a postcondition.
     :param program_vars: (ProgramVars) information about variables and their types.
     :return: A tuple containing the SSA form of the given program (block of instructions) and postcondition.
     """
     assert isinstance(program_vars, contract.ProgramVars)
-    assert isinstance(ib, ProgramInterm)
+    assert isinstance(program, ProgramInterm)
     assert isinstance(post, Expression)
 
     ssa_conv = ConverterSSA(ssa_quote_marked_vars = ssa_quote_marked_vars,
                             ssa_mark_indexed=ssa_mark_indexed)
     # Converting program's body.
-    src_ib_ssa, assign_index = ssa_conv.convert(ib.src, program_vars)
+    src_ib_ssa, assign_index = ssa_conv.convert(program.src, program_vars)
     # Converting postcondition.
-    ssa_conv.update_expr(post, assign_index)
+    ssa_conv.update_expr(post, assign_index, frozen_vars=program_vars.input_vars)
 
     utils.logger.debug('------------------------------')
     utils.logger.debug('SSA form:')
@@ -408,20 +423,20 @@ def convert(ib, post, program_vars, ssa_quote_marked_vars = True, ssa_mark_index
 
 
 
-def convert_ib(ib, program_vars, ssa_quote_marked_vars = True, ssa_mark_indexed = True):
+def convert_ib(program, program_vars, ssa_quote_marked_vars = True, ssa_mark_indexed = True):
     """Returns an instruction block converted to SSA (Single Static
      Assignment) form. This function acts as a wrapper for ConverterSSA object.
 
-    :param ib: (ProgramInterm) instruction block representing the whole program.
+    :param program: (ProgramInterm) instruction block representing the whole program.
     :param program_vars: (ProgramVars) information about variables and their types.
     :return: (ProgramInterm) the SSA form of the given program.
     """
     assert isinstance(program_vars, contract.ProgramVars)
-    assert isinstance(ib, ProgramInterm)
+    assert isinstance(program, ProgramInterm)
 
     ssa_conv = ConverterSSA(ssa_quote_marked_vars = ssa_quote_marked_vars,
                             ssa_mark_indexed=ssa_mark_indexed)
-    src_ib_ssa, assign_index = ssa_conv.convert(ib.src, program_vars)
+    src_ib_ssa, assign_index = ssa_conv.convert(program.src, program_vars)
 
     utils.logger.debug('------------------------------')
     utils.logger.debug('SSA form:')
