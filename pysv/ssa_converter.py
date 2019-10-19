@@ -13,8 +13,8 @@ class ConverterSSA(object):
 
     TODO:
     - Currently every assignment results in creating marked variable, even if this is the first
-     use of this variable. It is important to note that if certain variable is present in the
-     precondition, then indeed it's first program assignment must be marked to avoid errors.
+     use of this variable. It is important to note that if a certain variable is present in the
+     precondition, then indeed its first program assignment must be marked to avoid errors.
 
     Attributes:
     -----------
@@ -159,7 +159,7 @@ class ConverterSSA(object):
     def inc_assign_num(self, base_id, dictionary):
         """Updates dictionary of the number of assignments per variable name.
 
-        :param base_id: (str) base ID of a variable which was assigned to, so it's counter
+        :param base_id: (str) base ID of a variable which was assigned to, so its counter
         needs to be incremented.
         :param dictionary: (dict) assignment index.
         """
@@ -172,7 +172,7 @@ class ConverterSSA(object):
     def update_dictionary(self, dictionary, base_id, new_val):
         """Updates dictionary of the number of assignments per variable name.
 
-        :param base_id: base ID of a variable which was assigned to, so it's counter needs to be incremented.
+        :param base_id: base ID of a variable which was assigned to, so its counter needs to be incremented.
         :param dictionary: (dict) assignment index.
         :param new_val: (int) value to be inserted.
         """

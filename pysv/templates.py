@@ -285,7 +285,7 @@ class GrammarOp(GrammarNode):
         return ' '.join(new_body).replace('( ', '(').replace(' )', ')')
 
     def get_rule_symbs_positions(self):
-        """Returns a list of tuples containing rule symbol and it's index in the body."""
+        """Returns a list of tuples containing rule symbol and its index in the body."""
         k = 0
         res = {}
         for i in range(0, len(self.body)):
