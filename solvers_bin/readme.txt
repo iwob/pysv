@@ -13,7 +13,7 @@ Download links for binary distributions of some SMT solvers:
     http://mathsat.fbk.eu/download.html
 
 
-To easily use the solver simply move it's binary to this folder (solvers-bin). This is where by
+To easily use the solver simply move its binary to this folder (solvers-bin). This is where by
 default solvers binaries are looked for. Default names of the solvers binaries (as well as
 names for --solver option) are:
 
@@ -22,5 +22,5 @@ names for --solver option) are:
 * MathSAT: mathsat
 
 If you name binaries like specified above you will not have to explicitly specify path to the
-solver - it will suffice to provide it's name (e.g. "--solver z3"). z3 is the default, so if
+solver - it will suffice to provide its name (e.g. "--solver z3"). z3 is the default, so if
 you want to use other solver you need to change this option accordingly.
