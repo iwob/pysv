@@ -451,7 +451,7 @@ def parse(content):
 
 class SygusNode(object):
     """Stores information about given node in the AST of SYGUS benchmark specification."""
-    def __init__(self, id, value = None, sort = None, args = None):
+    def __init__(self, id, value=None, sort=None, args=None):
         if args is None:
             args = []
         self.id = id

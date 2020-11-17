@@ -115,7 +115,11 @@ class Solver(object):
         return p.communicate(input=script)  # a tuple (stdout, stderr) is returned
 
     def get_cmd_strings(self, other_params):
-        raise Exception('Function get_cmd_strings is not implemented!')
+        # raise Exception('Function get_cmd_strings is not implemented!')
+        cmd = [self.env.solver_path]
+        cmd.extend(Solver.get_solver_specific_args(self.solver_type, self.env))
+        cmd.extend(other_params)
+        return cmd
 
     def prepare_apply_output(self, out_data, err_data):
         res = out_data
@@ -215,7 +219,7 @@ class SolverResult(object):
             self.script = result.script
             self.was_any_error = result.was_any_error
         else:
-            self.text = result
+            self.text = result.strip()
             self.text_errors = text_errors
             self.was_any_error = True if text_errors is not None and text_errors != "" else False
             utils.logger.debug('SolverResult.text = ' + self.text)
@@ -225,7 +229,10 @@ class SolverResult(object):
             self.unsat_core = []
             self.script = script
             if self.decision == 'sat':
-                self.model = SolverResult.get_model_values(result)
+                if len(self.text) == 3:  # there is nothing beside 'sat'
+                    self.model = None
+                else:
+                    self.model = SolverResult.get_model_values(result)
                 if env.produce_assignments:
                     self.assignments = SolverResult.get_assignments(result, env.solver_interactive_mode)
             if self.decision == 'unsat' and env.produce_unsat_core:
