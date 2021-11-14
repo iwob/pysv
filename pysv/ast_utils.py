@@ -245,11 +245,15 @@ class ASTExprConverter:
             for val in node.args:
                 args.append(ASTExprConverter.create_expr(val))
             return InstrCall(fun_name, args)
-        elif ASTExprConverter.is_python_3 and t == ast.NameConstant:
+        elif ASTExprConverter.is_python_3 and (t == ast.NameConstant or t == ast.Constant):
             if str(node.value) == 'False':
                 return ConstBool(False)
             elif str(node.value) == 'True':
                 return ConstBool(True)
+            elif type(node.value) == int:
+                return ConstInt(int(node.value))
+            elif type(node.value) == float:
+                return ConstReal(float(node.value))
             else:
                 raise Exception("Python3 NameConstant with value: " + str(node.value) + ' is not currently supported!')
         else:

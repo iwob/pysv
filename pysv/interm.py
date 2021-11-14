@@ -589,6 +589,24 @@ class ConstInt(Expression):
             return False
 
 
+class ConstReal(Expression):
+    def __init__(self, value):
+        Expression.__init__(self)
+        self.value = value
+
+    def __str__(self):
+        return self.get_text()
+
+    def get_text(self):
+        return str(self.value)
+
+    def equals(self, other):
+        if isinstance(other, ConstReal):
+            return self.value == other.value
+        else:
+            return False
+
+
 class ConstBool(Expression):
     def __init__(self, value):
         Expression.__init__(self)
@@ -755,7 +773,7 @@ class ExprTranslator(object):
 
         elif t is Var:
             return expr.get_text()
-        elif t is ConstInt or t is ConstBool:
+        elif t is ConstInt or t is ConstBool or t is ConstReal:
             return str(expr.get_text())
         elif t is ExprHole:
             return expr.hole_decl.get_function_call()
