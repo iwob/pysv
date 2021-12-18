@@ -132,7 +132,8 @@ class Solver(object):
         if other_args is None:
             other_args = []
         if solver_type == Solver.Z3:
-            res = ['-smt2', '-in']
+            res = ['-smt2', 'pp.single_line=true', 'pp.decimal_precision=50', 'pp.decimal=true',
+                   'pp.min-alias-size=1000000', 'pp.max_depth=1000000', 'model.completion=true', '-in']
         elif solver_type == Solver.CVC4:
             res = ['--lang', 'smt']
         elif solver_type == Solver.MathSAT:
@@ -296,7 +297,7 @@ class SolverResult(object):
 
         if prefix == '(error' or prefix not in ('(model', '(('):
             return {}
-        elif prefix == '(model':
+        elif prefix == '(model' or 'define-fun' in text:
             return SolverResult.get_model_explicit(words[start:])
         elif prefix == '((':
             return SolverResult.get_model_simplified(words[start:])

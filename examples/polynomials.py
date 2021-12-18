@@ -70,6 +70,7 @@ csv_keijzer12 = """x:Int; y:Int; res:Int
 3; 3; 55"""
 
 
+
 def synthesize_keijzer12():
     smtgp_nia_grammar = """
     (
@@ -95,6 +96,31 @@ def synthesize_keijzer12():
 
 
 
+csv_square = """x:Int; res:Int
+-2; 5
+0; 1
+2; 5"""
+
+def synthesize_square():
+    smtgp_nia_grammar = """
+    (
+        ( Start Int
+            ( x (Constant Int) (+ Start Start) (- Start Start) (* Start Start) )
+        )
+    )
+    """
+    vars = contract.ProgramVars({'x': 'Int'}, {'res': 'Int'})
+    code = """(= res (+ H1 1))"""
+    code_pre = 'true'
+    code_post = 'true'
+    grammar = templates.load_gramar_from_SYGUS_spec(smtgp_nia_grammar)
+    h1 = smt_synthesis.HoleDecl('H1', grammar, {'x': 'Int'}, True, 2)
+    hole_decls = [h1]
+    tc = contract.TestCases.from_csv(csv_square)
+    env = utils.Options(['--solver', 'z3', '--logic', 'NIA', "--lang", "smt2", "--name_all_assertions", "0", "--synth_mode", "max"])
+    res = smt_synthesis.synthesize_tc(tc, code, code_pre, code_post, vars, env, hole_decls)
+    return res
+
 
 
 
@@ -104,7 +130,8 @@ def synthesize_keijzer12():
 
 
 if __name__ == "__main__":
-    res = synthesize_keijzer12()
+    # res = synthesize_keijzer12()
+    res = synthesize_square()
 
     print('******** Z3 RESULT ********')
     print(res.text)

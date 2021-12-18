@@ -87,7 +87,7 @@ hole_decls = get_hole_declarations(vars_in_hole)
 
 
 # Running a synthesizer.
-env = utils.Options({'--solver': 'z3', '--logic': 'NIA'})
+env = utils.Options({'--solver':'z3', '--logic':'NIA', '--synth_mode':'max'})
 res = smt_synthesis.synthesize_tc(test_cases, code, code_pre, code_post, vars_in_program, env,
                                   hole_decls)
 print('******** Z3 RESULT ********')

@@ -263,7 +263,10 @@ class SynthesisConstrTestCases(SynthesisConstr):
         else:
             # Definition of variable storing information about passing or not a test case.
             if self.env.tc_fitness_mode == 'normal':
-                text += '(define-fun itest{0} () Int (ite (! {1} :named pass_itest{0}) 1 0))\n'.format(num, TC_POST)
+                if self.env.name_all_assertions:
+                    text += '(define-fun itest{0} () Int (ite (! {1} :named pass_itest{0}) 1 0))\n'.format(num, TC_POST)
+                else:
+                    text += '(define-fun itest{0} () Int (ite {1} 1 0))\n'.format(num, TC_POST)
 
             elif self.env.tc_fitness_mode == 'L1':
                 assert len(tc.outputs) == 1 # Simplifying assumption: for each test case program returns only 1 value.
